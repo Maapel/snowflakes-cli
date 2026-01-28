@@ -1,0 +1,4 @@
+typer
+sqlmodel
+rich
+pyinstaller
