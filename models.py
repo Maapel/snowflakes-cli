@@ -8,7 +8,7 @@ class Ticket(SQLModel, table=True):
     description: Optional[str] = None
     
     # PM Features
-    type: str = Field(default="TASK")   # EPIC, STORY, TASK, BUG
+    type: str = Field(default="TASK")   # STORY, TASK, BUG
     status: str = Field(default="TODO") # TODO, IN_PROGRESS, REVIEW, DONE
     points: int = Field(default=0)      # Fibonacci: 1, 2, 3, 5, 8
     sprint: str = Field(default="Backlog")
@@ -17,4 +17,3 @@ class Ticket(SQLModel, table=True):
     priority: str = Field(default="MEDIUM")
     created_at: datetime = Field(default_factory=datetime.now)
     resolution_notes: Optional[str] = None
-    parent_id: Optional[int] = Field(default=None) # To link a Story to an Epic
