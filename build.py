@@ -18,6 +18,7 @@ PyInstaller.__main__.run([
     '--hidden-import=rich.columns',
     '--hidden-import=rich.panel',
     '--hidden-import=rich.text',
+    '--collect-all=rich',
 ])
 
 print("❄️  Build complete.")
