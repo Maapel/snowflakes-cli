@@ -45,13 +45,38 @@ def remove_pid():
 app = typer.Typer(add_completion=False)
 console = Console()
 
-@app.callback()
+@app.callback(invoke_without_command=True)
 def callback(
-    project: Optional[str] = typer.Option(None, "--project", "-p", help="Path to project root (folder containing snowflakes.db). Defaults to current directory."),
+    project: Optional[str] = typer.Option(None, "--project", "-p", help="Path to project root. Defaults to CWD."),
+    agent_help: bool = typer.Option(False, "--agent-help", help="Print instructions for AI agents and exit.")
 ):
     """
     Snowflakes: A local-first Project Management System.
     """
+    if agent_help:
+        rprint("""[bold cyan]Snowflakes AI Protocol[/bold cyan]
+
+[bold]1. Structure[/bold]
+Data is stored in `snowflakes.db` in the project root.
+Use `sw --project <path>` if working outside the current directory.
+
+[bold]2. Workflow[/bold]
+1. [green]READ[/green]: `sw agent-read` -> Get assigned OPEN tickets (JSON).
+2. [yellow]WORK[/yellow]: `sw move <ID> IN_PROGRESS` -> Signal start.
+3. [blue]DONE[/blue]: `sw resolve <ID> --notes "Fixed..."` -> Close ticket.
+
+[bold]3. Commands (JSON output enabled)[/bold]
+- `sw agent-read`: Get your tasks.
+- `sw groom-read`: Get backlog tasks needing estimation.
+- `sw list --json`: Dump all open tickets.
+
+[bold]4. Actions[/bold]
+- `sw move <ID> <STATUS>`: TODO, IN_PROGRESS, REVIEW, DONE
+- `sw estimate <ID> <POINTS>`: Fibonacci (1, 2, 3, 5, 8...)
+- `sw resolve <ID> --notes <TEXT>`: Resolution is required.
+""")
+        raise typer.Exit()
+
     if project:
         os.environ["SNOWFLAKES_ROOT"] = os.path.abspath(project)
         
