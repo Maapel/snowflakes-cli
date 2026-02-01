@@ -78,7 +78,8 @@ Includes a local web interface for drag-and-drop management.
 ```bash
 sw start
 # Opens http://127.0.0.1:8000
-
+sw stop
+# Stops the running UI
 ```
 
 ## AI Integration
@@ -126,8 +127,25 @@ A standard agent workflow looks like this:
 3. [Agent writes code]
 4. `sw resolve <ID> --notes "Fixed via PR #12"` -> Agent closes ticket.
 
+## Command Reference
+
+| Command | Description | Options |
+| :--- | :--- | :--- |
+| `new` | Create a new ticket. Interactive by default. | `--type`, `--prio`, `--assign` |
+| `list` | List open tickets. | `--all`, `--sprint`, `--assignee`, `--json` |
+| `board` | View the Kanban Board. | `--sprint` |
+| `close-sprint` | Close a sprint and migrate tickets. | `--next-sprint` (required) |
+| `resolve` | Mark a ticket as DONE. | `--notes` (required) |
+| `estimate` | Assign complexity points. | `ID POINTS` |
+| `sprint` | Bulk assign tickets to a sprint. | `NAME ID...` |
+| `move` | Move a ticket to a new status. | `ID STATUS` |
+| `groom-read` | JSON output of unestimated backlog tickets. | |
+| `agent-read` | JSON output of AI-assigned OPEN tickets. | |
+| `start` | Start the Snowflakes Web UI. | |
+| `stop` | Stop the running Snowflakes Web UI. | |
+
 ## Configuration
 
 | Env Variable | Description | Default |
-| --- | --- | --- |
+| :--- | :--- | :--- |
 | `SNOWFLAKES_ROOT` | Path to the database file. | Current Working Directory |
