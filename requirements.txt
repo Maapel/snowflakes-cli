@@ -2,3 +2,5 @@ typer
 sqlmodel
 rich
 pyinstaller
+fastapi
+uvicorn

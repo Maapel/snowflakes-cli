@@ -5,8 +5,9 @@ from sqlmodel import SQLModel, create_engine, Session
 DB_NAME = "snowflakes.db"
 
 def get_db_path():
-    """Returns the path to the DB in the current working directory."""
-    return os.path.join(os.getcwd(), DB_NAME)
+    """Returns the path to the DB. Respects SNOWFLAKES_ROOT if set."""
+    root = os.environ.get("SNOWFLAKES_ROOT", os.getcwd())
+    return os.path.join(root, DB_NAME)
 
 def get_engine():
     """Creates the engine connecting to the local DB file."""

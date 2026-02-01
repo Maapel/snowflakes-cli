@@ -9,6 +9,7 @@ PyInstaller.__main__.run([
     '--name=snowflakes',
     '--onefile',
     '--clean',
+    '--add-data=static:static',
     # Hidden imports are crucial for sqlmodel/rich
     '--hidden-import=sqlmodel',
     '--hidden-import=sqlmodel.sql.expression',
@@ -18,7 +19,15 @@ PyInstaller.__main__.run([
     '--hidden-import=rich.columns',
     '--hidden-import=rich.panel',
     '--hidden-import=rich.text',
+    '--hidden-import=uvicorn',
+    '--hidden-import=fastapi',
+    '--hidden-import=starlette',
+    '--hidden-import=email.mime.multipart',
+    '--hidden-import=email.mime.text',
+    '--hidden-import=email.mime.application',
     '--collect-all=rich',
+    '--collect-all=uvicorn',
+    '--collect-all=fastapi',
 ])
 
 print("❄️  Build complete.")

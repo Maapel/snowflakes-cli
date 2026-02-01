@@ -1,0 +1,856 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Snowflakes ❄️</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            /* Slate 900 */
+            --text-color: #f1f5f9;
+            /* Slate 100 */
+            --card-bg: rgba(30, 41, 59, 0.7);
+            /* Slate 800 with alpha */
+            --card-border: rgba(255, 255, 255, 0.1);
+            --primary: #38bdf8;
+            /* Sky 400 */
+            --secondary: #818cf8;
+            /* Indigo 400 */
+            --accent: #f472b6;
+            /* Pink 400 */
+            --success: #4ade80;
+            /* Green 400 */
+            --glass-bg: rgba(255, 255, 255, 0.05);
+            --glass-border: 1px solid rgba(255, 255, 255, 0.1);
+            --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Inter', sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            background-image:
+                radial-gradient(at 0% 0%, hsla(253, 16%, 7%, 1) 0, transparent 50%),
+                radial-gradient(at 50% 0%, hsla(225, 39%, 30%, 1) 0, transparent 50%),
+                radial-gradient(at 100% 0%, hsla(339, 49%, 30%, 1) 0, transparent 50%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow-x: hidden;
+        }
+
+        /* Header */
+        header {
+            padding: 1.5rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            backdrop-filter: blur(10px);
+            border-bottom: var(--glass-border);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            background: rgba(15, 23, 42, 0.8);
+            gap: 1rem;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .header-controls {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+        }
+
+        h1 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            background: linear-gradient(to right, var(--primary), var(--secondary));
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            white-space: nowrap;
+        }
+
+        button.btn-primary {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.75rem;
+            color: white;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(56, 189, 248, 0.3);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            white-space: nowrap;
+        }
+
+        button.btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(56, 189, 248, 0.4);
+        }
+
+        select.filter-select {
+            padding: 0.75rem 1rem;
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 0.75rem;
+            color: white;
+            font-size: 0.9rem;
+            cursor: pointer;
+            min-width: 150px;
+        }
+
+        select.filter-select:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+
+        /* Board Layout */
+        main {
+            flex: 1;
+            padding: 2rem;
+            overflow-x: auto;
+        }
+
+        .board {
+            display: grid;
+            grid-template-columns: repeat(4, 300px);
+            gap: 1.5rem;
+            height: calc(100vh - 120px);
+        }
+
+        .column {
+            background: var(--glass-bg);
+            border: var(--glass-border);
+            border-radius: 1rem;
+            padding: 1rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            backdrop-filter: blur(5px);
+            min-height: 200px;
+            transition: background 0.3s;
+        }
+
+        .column.drag-over {
+            background: rgba(56, 189, 248, 0.1);
+            border-color: var(--primary);
+        }
+
+        .column-header {
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: #94a3b8;
+            font-weight: 600;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .column-count {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 0.1rem 0.5rem;
+            border-radius: 1rem;
+            font-size: 0.8rem;
+        }
+
+        /* Ticket Card */
+        .ticket {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 0.75rem;
+            padding: 1rem;
+            cursor: grab;
+            transition: all 0.2s ease;
+            position: relative;
+            overflow: hidden;
+            box-shadow: var(--shadow);
+            user-select: none;
+        }
+
+        .ticket:hover {
+            transform: translateY(-3px) scale(1.02);
+            border-color: rgba(255, 255, 255, 0.2);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.2);
+        }
+
+        .ticket:active {
+            cursor: grabbing;
+        }
+
+        .ticket.dragging {
+            opacity: 0.5;
+            transform: scale(0.95);
+        }
+
+        .ticket::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 4px;
+            height: 100%;
+        }
+
+        .ticket.type-STORY::before {
+            background: var(--primary);
+        }
+
+        .ticket.type-BUG::before {
+            background: var(--accent);
+        }
+
+        .ticket.type-TASK::before {
+            background: var(--success);
+        }
+
+        .ticket-header {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.75rem;
+            color: #94a3b8;
+            margin-bottom: 0.5rem;
+        }
+
+        .ticket-title {
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            line-height: 1.4;
+        }
+
+        .ticket-meta {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.8rem;
+            color: #cbd5e1;
+            margin-top: 0.75rem;
+        }
+
+        .badge {
+            padding: 0.2rem 0.5rem;
+            border-radius: 4px;
+            background: rgba(255, 255, 255, 0.1);
+            font-size: 0.7rem;
+        }
+
+        .avatar {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #6366f1, #a855f7);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.6rem;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+
+        /* Modal */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(4px);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+            z-index: 1000;
+        }
+
+        .modal-overlay.active {
+            opacity: 1;
+            pointer-events: all;
+        }
+
+        .modal {
+            background: #1e293b;
+            width: 100%;
+            max-width: 500px;
+            border-radius: 1rem;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 2rem;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.3);
+            transform: translateY(20px);
+            transition: transform 0.3s ease;
+        }
+
+        .modal-overlay.active .modal {
+            transform: translateY(0);
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-size: 0.9rem;
+            color: #94a3b8;
+        }
+
+        input,
+        textarea,
+        select {
+            width: 100%;
+            padding: 0.75rem;
+            background: rgba(0, 0, 0, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 0.5rem;
+            color: white;
+            font-size: 1rem;
+            transition: border-color 0.2s;
+        }
+
+        input:focus,
+        textarea:focus,
+        select:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+
+        .modal-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 1rem;
+            margin-top: 2rem;
+        }
+
+        .btn-cancel {
+            background: transparent;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: #cbd5e1;
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.75rem;
+            cursor: pointer;
+        }
+
+        .loading-spinner {
+            border: 3px solid rgba(255, 255, 255, 0.1);
+            border-left-color: var(--primary);
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        /* Combobox Styles */
+        .combobox-container {
+            position: relative;
+        }
+
+        .dropdown-menu {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            width: 100%;
+            background: #1e293b;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 0.5rem;
+            margin-top: 0.25rem;
+            max-height: 200px;
+            overflow-y: auto;
+            z-index: 1000;
+            display: none;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
+        }
+
+        .dropdown-menu.show {
+            display: block;
+        }
+
+        .dropdown-item {
+            padding: 0.75rem 1rem;
+            cursor: pointer;
+            color: #cbd5e1;
+            transition: background 0.2s;
+        }
+
+        .dropdown-item:hover,
+        .dropdown-item.active {
+            background: rgba(56, 189, 248, 0.1);
+            color: var(--primary);
+        }
+
+        .create-option {
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            color: var(--success);
+            font-weight: 500;
+        }
+    </style>
+</head>
+
+<body>
+
+    <header>
+        <div class="header-left">
+            <h1>❄️ Snowflakes</h1>
+            <div class="header-controls">
+                <select id="sprintFilter" class="filter-select">
+                    <option value="ALL">All Sprints</option>
+                    <!-- Populated dynamically -->
+                </select>
+
+                <select id="userFilter" class="filter-select">
+                    <option value="ALL">All Users</option>
+                    <!-- Populated dynamically -->
+                </select>
+            </div>
+        </div>
+
+        <button class="btn-primary" onclick="openModal()">
+            <span>+</span> New Ticket
+        </button>
+    </header>
+
+    <main>
+        <div class="board">
+            <!-- Columns must match CLI status exactly: TODO, IN_PROGRESS, REVIEW, DONE -->
+            <div class="column" id="col-TODO" data-status="TODO">
+                <div class="column-header">
+                    Todo <span class="column-count">0</span>
+                </div>
+            </div>
+            <div class="column" id="col-IN_PROGRESS" data-status="IN_PROGRESS">
+                <div class="column-header">
+                    In Progress <span class="column-count">0</span>
+                </div>
+            </div>
+            <div class="column" id="col-REVIEW" data-status="REVIEW">
+                <div class="column-header">
+                    Review <span class="column-count">0</span>
+                </div>
+            </div>
+            <div class="column" id="col-DONE" data-status="DONE">
+                <div class="column-header">
+                    Done <span class="column-count">0</span>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Create Ticket Modal -->
+    <div class="modal-overlay" id="createModal">
+        <div class="modal">
+            <h2 style="margin-bottom: 1.5rem;">Create New Ticket</h2>
+            <form id="createForm">
+                <div class="form-group">
+                    <label>Title</label>
+                    <input type="text" name="title" required placeholder="e.g., Fix login bug">
+                </div>
+                <div class="form-group">
+                    <label>Description</label>
+                    <textarea name="description" rows="3" placeholder="Details..."></textarea>
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                    <div class="form-group">
+                        <label>Type</label>
+                        <select name="type">
+                            <option value="TASK">Task</option>
+                            <option value="STORY">Story</option>
+                            <option value="BUG">Bug</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Priority</label>
+                        <select name="priority">
+                            <option value="MEDIUM">Medium</option>
+                            <option value="HIGH">High</option>
+                            <option value="LOW">Low</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Sprint</label>
+                    <div class="combobox-container">
+                        <input type="text" name="sprint" value="Backlog" id="modalSprintInput" autocomplete="off">
+                        <div class="dropdown-menu" id="sprintDropdown">
+                            <!-- Populated dynamically -->
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn-cancel" onclick="closeModal()">Cancel</button>
+                    <button type="submit" class="btn-primary" id="submitBtn">Create Ticket</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = '/api/tickets';
+        let allTickets = [];
+        let dragSrcEl = null;
+
+        // Fetch and Render Tickets
+        async function loadTickets() {
+            try {
+                const res = await fetch(API_URL);
+                allTickets = await res.json();
+                populateFilters(allTickets);
+                renderBoard();
+            } catch (err) {
+                console.error("Failed to load tickets", err);
+            }
+        }
+
+        function populateFilters(tickets) {
+            const sprintFilter = document.getElementById('sprintFilter');
+            const userFilter = document.getElementById('userFilter');
+
+            // Get current selections
+            const currentSprint = sprintFilter.value;
+            const currentUser = userFilter.value;
+
+            const sprints = new Set();
+            const users = new Set();
+
+            tickets.forEach(t => {
+                if (t.sprint) sprints.add(t.sprint);
+                if (t.assignee) users.add(t.assignee);
+            });
+
+            // Populate Sprints
+            sprintFilter.innerHTML = '<option value="ALL">All Sprints</option>';
+            Array.from(sprints).sort().forEach(s => {
+                const opt = document.createElement('option');
+                opt.value = s;
+                opt.textContent = s;
+                sprintFilter.appendChild(opt);
+            });
+            sprintFilter.value = currentSprint;
+            // If current sprint no longer exists, reset to ALL
+            if (sprintFilter.value !== currentSprint) sprintFilter.value = 'ALL';
+
+
+            // Populate Users
+            userFilter.innerHTML = '<option value="ALL">All Users</option>';
+            Array.from(users).sort().forEach(u => {
+                const opt = document.createElement('option');
+                opt.value = u;
+                opt.textContent = u;
+                userFilter.appendChild(opt);
+            });
+            userFilter.value = currentUser;
+            if (userFilter.value !== currentUser) userFilter.value = 'ALL';
+        }
+
+        function renderBoard() {
+            const sprintFilterVal = document.getElementById('sprintFilter').value;
+            const userFilterVal = document.getElementById('userFilter').value;
+
+            // Filter
+            const tickets = allTickets.filter(t => {
+                const matchSprint = sprintFilterVal === 'ALL' || t.sprint === sprintFilterVal;
+                const matchUser = userFilterVal === 'ALL' || t.assignee === userFilterVal;
+                return matchSprint && matchUser;
+            });
+
+            // Clear columns
+            document.querySelectorAll('.column-count').forEach(el => el.textContent = '0');
+            ['TODO', 'IN_PROGRESS', 'REVIEW', 'DONE'].forEach(status => {
+                const col = document.getElementById(`col-${status}`);
+                // Keep header, remove tickets
+                while (col.childNodes.length > 2) {
+                    col.removeChild(col.lastChild);
+                }
+            });
+
+            tickets.forEach(t => {
+                const card = createTicketCard(t);
+                const status = t.status || 'TODO';
+                const col = document.getElementById(`col-${status}`);
+                if (col) {
+                    col.appendChild(card);
+                    // Update count
+                    const countSpan = col.querySelector('.column-count');
+                    countSpan.textContent = parseInt(countSpan.textContent) + 1;
+                }
+            });
+
+            // Re-bind Drag Events for new tickets
+            bindTicketEvents();
+        }
+
+        function createTicketCard(t) {
+            const div = document.createElement('div');
+            div.className = `ticket type-${t.type}`;
+            div.setAttribute('draggable', 'true');
+            div.dataset.id = t.id;
+            div.innerHTML = `
+                <div class="ticket-header">
+                    <span>#${t.id} ${t.sprint}</span>
+                    <span>${getIcon(t.type)}</span>
+                </div>
+                <div class="ticket-title">${t.title}</div>
+                <div class="ticket-meta">
+                    <span class="badge">${t.points} pts</span>
+                    <div class="avatar" title="${t.assignee}">${t.assignee.substring(0, 2)}</div>
+                </div>
+            `;
+            return div;
+        }
+
+        function getIcon(type) {
+            if (type === 'BUG') return '🐞';
+            if (type === 'STORY') return '📝';
+            return '🔨'; // TASK
+        }
+
+        // Drag and Drop Logic
+        // Drag and Drop Logic
+        function bindTicketEvents() {
+            const tickets = document.querySelectorAll('.ticket');
+            tickets.forEach(ticket => {
+                ticket.addEventListener('dragstart', handleDragStart);
+                ticket.addEventListener('dragend', handleDragEnd);
+            });
+        }
+
+        function setupColumnDnD() {
+            const columns = document.querySelectorAll('.column');
+            columns.forEach(col => {
+                col.addEventListener('dragover', handleDragOver);
+                col.addEventListener('dragleave', handleDragLeave);
+                col.addEventListener('drop', handleDrop);
+            });
+        }
+
+        function handleDragStart(e) {
+            dragSrcEl = this;
+            this.classList.add('dragging');
+            e.dataTransfer.effectAllowed = 'move';
+            e.dataTransfer.setData('text/plain', this.dataset.id);
+        }
+
+        function handleDragEnd(e) {
+            this.classList.remove('dragging');
+            document.querySelectorAll('.column').forEach(col => {
+                col.classList.remove('drag-over');
+            });
+        }
+
+        function handleDragOver(e) {
+            if (e.preventDefault) {
+                e.preventDefault();
+            }
+            this.classList.add('drag-over');
+            e.dataTransfer.dropEffect = 'move';
+            return false;
+        }
+
+        function handleDragLeave(e) {
+            this.classList.remove('drag-over');
+        }
+
+        async function handleDrop(e) {
+            if (e.stopPropagation) {
+                e.stopPropagation();
+            }
+            this.classList.remove('drag-over');
+
+            const ticketId = e.dataTransfer.getData('text/plain');
+            const newStatus = this.getAttribute('data-status');
+
+            if (dragSrcEl) {
+                // Optimistic UI update
+                this.appendChild(dragSrcEl);
+                // Update internal state
+                const ticket = allTickets.find(t => t.id == ticketId);
+                if (ticket) ticket.status = newStatus;
+
+                // Recalculate counts
+                renderBoard();
+
+                // Call API
+                try {
+                    const res = await fetch(`${API_URL}/${ticketId}/move`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ status: newStatus })
+                    });
+                    if (!res.ok) {
+                        alert("Failed to move ticket on server");
+                        // Revert could be implemented here, but simple reload is easier
+                        loadTickets();
+                    }
+                } catch (err) {
+                    console.error("Move failed", err);
+                    loadTickets();
+                }
+            }
+            return false;
+        }
+
+        // Filters Event Listeners
+        document.getElementById('sprintFilter').addEventListener('change', renderBoard);
+        document.getElementById('userFilter').addEventListener('change', renderBoard);
+
+        // Modal Logic
+        const modal = document.getElementById('createModal');
+        const form = document.getElementById('createForm');
+
+        function openModal() {
+            modal.classList.add('active');
+            // Pre-fill sprint if selected filter is not ALL
+            const currentSprint = document.getElementById('sprintFilter').value;
+            if (currentSprint !== 'ALL') {
+                document.getElementById('modalSprintInput').value = currentSprint;
+            }
+        }
+
+        function closeModal() {
+            modal.classList.remove('active');
+            form.reset();
+        }
+
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) closeModal();
+        });
+
+        // Sprint Combobox Logic
+        const sprintInput = document.getElementById('modalSprintInput');
+        const sprintDropdown = document.getElementById('sprintDropdown');
+
+        sprintInput.addEventListener('focus', () => {
+            updateSprintDropdown();
+            sprintDropdown.classList.add('show');
+        });
+
+        sprintInput.addEventListener('input', () => {
+            updateSprintDropdown();
+            sprintDropdown.classList.add('show');
+        });
+
+        // Close dropdown when clicking outside
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('.combobox-container')) {
+                sprintDropdown.classList.remove('show');
+            }
+        });
+
+        function updateSprintDropdown() {
+            const query = sprintInput.value.toLowerCase();
+            const sprints = getUniqueSprints();
+
+            sprintDropdown.innerHTML = '';
+
+            // Filter options
+            const matches = sprints.filter(s => s.toLowerCase().includes(query));
+
+            matches.forEach(s => {
+                const div = document.createElement('div');
+                div.className = 'dropdown-item';
+                div.textContent = s;
+                div.onclick = () => selectSprint(s);
+                sprintDropdown.appendChild(div);
+            });
+
+            // "Create New" option
+            if (query && !sprints.some(s => s.toLowerCase() === query)) {
+                const div = document.createElement('div');
+                div.className = 'dropdown-item create-option';
+                div.textContent = `+ Create "${sprintInput.value}"`;
+                div.onclick = () => selectSprint(sprintInput.value);
+                sprintDropdown.appendChild(div);
+            }
+        }
+
+        function selectSprint(value) {
+            sprintInput.value = value;
+            sprintDropdown.classList.remove('show');
+        }
+
+        function getUniqueSprints() {
+            const sprints = new Set(['Backlog']); // Always include Backlog
+            allTickets.forEach(t => {
+                if (t.sprint) sprints.add(t.sprint);
+            });
+            return Array.from(sprints).sort();
+        }
+
+        // Form Submit
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const btn = document.getElementById('submitBtn');
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '<div class="loading-spinner"></div>';
+            btn.disabled = true;
+
+            const formData = new FormData(form);
+            const data = {
+                title: formData.get('title'),
+                description: formData.get('description'),
+                type: formData.get('type'),
+                priority: formData.get('priority'),
+                sprint: formData.get('sprint')
+            };
+
+            try {
+                const res = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+
+                if (res.ok) {
+                    closeModal();
+                    loadTickets(); // Refresh board and filters
+                } else {
+                    alert("Failed to create ticket");
+                }
+            } catch (err) {
+                console.error(err);
+                alert("Error creating ticket");
+            } finally {
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            }
+        });
+
+        // Initial Load
+        setupColumnDnD();
+        loadTickets();
+
+    </script>
+</body>
+
+</html>

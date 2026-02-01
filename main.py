@@ -12,16 +12,50 @@ from rich.prompt import Prompt, IntPrompt
 # Import our local modules
 from models import Ticket
 from database import init_db, get_session
+import sys
+import os
+import signal
+import subprocess
+import webbrowser
+import webbrowser
+import time
+import shutil
+
+HOME_DIR = os.path.expanduser("~/.snowflakes")
+PID_FILE = os.path.join(HOME_DIR, "server.pid")
+
+def get_pid():
+    if os.path.exists(PID_FILE):
+        try:
+            with open(PID_FILE, "r") as f:
+                return int(f.read().strip())
+        except:
+            return None
+    return None
+
+def save_pid(pid):
+    os.makedirs(HOME_DIR, exist_ok=True)
+    with open(PID_FILE, "w") as f:
+        f.write(str(pid))
+
+def remove_pid():
+    if os.path.exists(PID_FILE):
+        os.remove(PID_FILE)
 
 app = typer.Typer(add_completion=False)
 console = Console()
 
 @app.callback()
-def callback():
+def callback(
+    project: Optional[str] = typer.Option(None, "--project", "-p", help="Path to project root (folder containing snowflakes.db). Defaults to current directory."),
+):
     """
     Snowflakes: A local-first Project Management System.
     """
-    # Initialize DB in current folder on every run
+    if project:
+        os.environ["SNOWFLAKES_ROOT"] = os.path.abspath(project)
+        
+    # Initialize DB in project folder (or current folder) on every run
     init_db()
 
 @app.command()
@@ -68,6 +102,10 @@ def new(
     points = points or 0
     sprint = sprint or "Backlog"
 
+    ticket = create_ticket_logic(title, desc, type, assign, prio, points, sprint)
+    rprint(f"[green]✓ Created {ticket.type} #{ticket.id}:[/green] {title}")
+
+def create_ticket_logic(title, desc, type, assign, prio, points, sprint):
     with get_session() as session:
         ticket = Ticket(
             title=title, 
@@ -81,16 +119,53 @@ def new(
         session.add(ticket)
         session.commit()
         session.refresh(ticket)
-    
-    rprint(f"[green]✓ Created {ticket.type} #{ticket.id}:[/green] {title}")
+        return ticket
 
 @app.command("list")
 def list_tickets(
     all: bool = False, 
     sprint: Optional[str] = None,
-    assignee: Optional[str] = typer.Option(None, "--assignee", "-u", help="Filter by user")
+    assignee: Optional[str] = typer.Option(None, "--assignee", "-u", help="Filter by user"),
+    json_output: bool = typer.Option(False, "--json", help="Output as JSON")
 ):
-    """List open tickets. Options: --all, --sprint, --assignee."""
+    """List open tickets. Options: --all, --sprint, --assignee, --json."""
+    tickets = list_tickets_logic(all, sprint, assignee)
+
+    if json_output:
+        data = [t.model_dump(mode='json') for t in tickets]
+        print(json.dumps(data, indent=2))
+        return
+
+    if not tickets:
+        rprint("[yellow]No tickets found.[/yellow]")
+        return
+
+    table = Table(title=f"Snowflakes ❄️  ({sprint if sprint else 'All Sprints'})")
+    table.add_column("ID", style="cyan", no_wrap=True)
+    table.add_column("Type", style="bold")
+    table.add_column("Status", style="magenta")
+    table.add_column("Sprint")
+    table.add_column("Pts")
+    table.add_column("Assignee")
+    table.add_column("Title")
+
+    for t in tickets:
+        assignee_style = "bold purple" if t.assignee == "ai" else "blue"
+        type_icon = "🐞" if t.type == "BUG" else "📝" if t.type == "STORY" else "🔨"
+        
+        table.add_row(
+            str(t.id), 
+            f"{type_icon} {t.type}",
+            t.status, 
+            t.sprint,
+            str(t.points),
+            f"[{assignee_style}]{t.assignee}[/{assignee_style}]", 
+            t.title
+        )
+
+    console.print(table) 
+
+def list_tickets_logic(all: bool = False, sprint: Optional[str] = None, assignee: Optional[str] = None):
     with get_session() as session:
         query = select(Ticket)
         if not all:
@@ -101,7 +176,12 @@ def list_tickets(
             # Simple substring match or exact match? Exact is safer for "me" vs "men"
             query = query.where(Ticket.assignee == assignee.lower())
             
-        tickets = session.exec(query).all()
+        return session.exec(query).all()
+
+    if json_output:
+        data = [t.model_dump(mode='json') for t in tickets]
+        print(json.dumps(data, indent=2))
+        return
 
     if not tickets:
         rprint("[yellow]No tickets found.[/yellow]")
@@ -258,13 +338,28 @@ def move(ticket_id: int, status: str):
     with get_session() as session:
         ticket = session.get(Ticket, ticket_id)
         if not ticket:
-            rprint(f"[red]Ticket #{ticket_id} not found.[/red]")
-            raise typer.Exit(code=1)
+             rprint(f"[red]Ticket #{ticket_id} not found.[/red]")
+             raise typer.Exit(code=1)
         
+        move_ticket_logic(ticket_id, status)
+        
+    rprint(f"[green]✓ Moved Ticket #{ticket_id} to {status.upper()}[/green]")
+
+def move_ticket_logic(ticket_id: int, status: str):
+    """
+    Moves a ticket to a new status.
+    Raises ValueError if ticket not found.
+    """
+    with get_session() as session:
+        ticket = session.get(Ticket, ticket_id)
+        if not ticket:
+            raise ValueError(f"Ticket {ticket_id} not found")
+            
         ticket.status = status.upper()
         session.add(ticket)
         session.commit()
-    rprint(f"[green]✓ Moved Ticket #{ticket_id} to {status.upper()}[/green]")
+        session.refresh(ticket)
+        return ticket
 
 @app.command("groom-read")
 def groom_read():
@@ -291,6 +386,113 @@ def agent_read():
     # Convert to dict manually for clean JSON output
     data = [t.model_dump(mode='json') for t in tickets]
     print(json.dumps(data, indent=2))
+
+@app.command("internal-server", hidden=True)
+def internal_server(
+    port: int = 8000,
+    host: str = "127.0.0.1",
+    reload: bool = False
+):
+    """Run the uvicorn server directly (blocking). Used internally."""
+    import uvicorn
+    # Import app inside function to avoid startup cost for CLI commands
+    from server import app as fast_app
+    
+    # Check if we are frozen (PyInstaller)
+    if getattr(sys, 'frozen', False):
+        # When frozen, reload must be False
+        uvicorn.run(fast_app, host=host, port=port, reload=False)
+    else:
+        uvicorn.run("server:app", host=host, port=port, reload=reload)
+
+@app.command("start")
+def start_server(
+    port: int = typer.Option(8000, help="Port to run the UI on"),
+    host: str = typer.Option("127.0.0.1", help="Host to run the UI on")
+):
+    """Start the Snowflakes UI in the background."""
+    pid = get_pid()
+    if pid:
+        # Check if process is actually running
+        try:
+            os.kill(pid, 0)
+            rprint(f"[yellow]❄️  Snowflakes is already running (PID: {pid}). Opening browser...[/yellow]")
+            webbrowser.open(f"http://{host}:{port}")
+            return
+        except OSError:
+            # Process doesn't exist, clean up PID file
+            remove_pid()
+
+    rprint(f"[green]❄️  Starting Snowflakes UI at http://{host}:{port}...[/green]")
+    
+    # Construct command to run 'internal-server'
+    if getattr(sys, 'frozen', False):
+        cmd = [sys.executable, "internal-server", "--port", str(port), "--host", host]
+        
+        # Extract static files to persistent location
+        static_src = os.path.join(sys._MEIPASS, "static")
+        static_dst = os.path.join(HOME_DIR, "static")
+        if os.path.exists(static_src):
+            # Clean update of static files
+            shutil.copytree(static_src, static_dst, dirs_exist_ok=True)
+            
+    else:
+        cmd = [sys.executable, "main.py", "internal-server", "--port", str(port), "--host", host]
+        
+    # Sanitize environment for PyInstaller background process
+    env = os.environ.copy()
+    
+    # Set static dir for server
+    env["SNOWFLAKES_STATIC_DIR"] = os.path.join(HOME_DIR, "static")
+
+    if getattr(sys, 'frozen', False):
+        # Prevent child from inheriting 'LD_LIBRARY_PATH' pointing to parent's temp dir
+        # which will be deleted when parent exits.
+        env.pop('LD_LIBRARY_PATH', None)
+        env.pop('LD_LIBRARY_PATH_ORIG', None)
+        env.pop('_MEIPASS2', None)
+        
+    # Spawn background process
+    proc = subprocess.Popen(
+        cmd,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+        start_new_session=True,
+        env=env
+    )
+    
+    save_pid(proc.pid)
+    
+    # Wait a moment for server to likely come up
+    time.sleep(1)
+    
+    # Suppress output to prevent "Broken pipe" from browser
+    with open(os.devnull, 'w') as devnull:
+        saved_stdout = sys.stdout
+        saved_stderr = sys.stderr
+        try:
+            sys.stdout = devnull
+            sys.stderr = devnull
+            webbrowser.open(f"http://{host}:{port}")
+        finally:
+            sys.stdout = saved_stdout
+            sys.stderr = saved_stderr
+
+@app.command("stop")
+def stop_server():
+    """Stop the running Snowflakes UI."""
+    pid = get_pid()
+    if not pid:
+        rprint("[red]❄️  No active Snowflakes server found.[/red]")
+        return
+        
+    try:
+        os.kill(pid, signal.SIGTERM)
+        rprint(f"[green]✓ Stopped Snowflakes server (PID: {pid})[/green]")
+    except OSError:
+        rprint(f"[yellow]Process {pid} not found. Cleaning up lock file.[/yellow]")
+        
+    remove_pid()
 
 if __name__ == "__main__":
     app()
