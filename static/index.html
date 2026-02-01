@@ -467,6 +467,46 @@
         </div>
     </main>
 
+    <!-- Edit Ticket Modal -->
+    <div class="modal-overlay" id="editModal">
+        <div class="modal">
+            <h2 style="margin-bottom: 1.5rem;">Edit Ticket</h2>
+            <form id="editForm">
+                <input type="hidden" name="id" id="editTicketId">
+                <div class="form-group">
+                    <label>Title</label>
+                    <input type="text" name="title" id="editTicketTitle" required>
+                </div>
+                <div class="form-group">
+                    <label>Description</label>
+                    <textarea name="description" id="editTicketDesc" rows="5"></textarea>
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                    <div class="form-group">
+                        <label>Type</label>
+                        <select name="type" id="editTicketType">
+                            <option value="TASK">Task</option>
+                            <option value="STORY">Story</option>
+                            <option value="BUG">Bug</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Priority</label>
+                        <select name="priority" id="editTicketPrio">
+                            <option value="MEDIUM">Medium</option>
+                            <option value="HIGH">High</option>
+                            <option value="LOW">Low</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-secondary" onclick="closeEditModal()">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <!-- Create Ticket Modal -->
     <div class="modal-overlay" id="createModal">
         <div class="modal">
@@ -615,12 +655,18 @@
             div.className = `ticket type-${t.type}`;
             div.setAttribute('draggable', 'true');
             div.dataset.id = t.id;
+            div.onclick = (e) => {
+                // Prevent opening when dragging
+                if (div.classList.contains('dragging')) return;
+                openEditModal(t);
+            };
             div.innerHTML = `
                 <div class="ticket-header">
                     <span>#${t.id} ${t.sprint}</span>
                     <span>${getIcon(t.type)}</span>
                 </div>
                 <div class="ticket-title">${t.title}</div>
+                <div class="ticket-desc" style="font-size: 0.8rem; opacity: 0.7; margin-bottom: 0.5rem; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">${t.description || ""}</div>
                 <div class="ticket-meta">
                     <span class="badge">${t.points} pts</span>
                     <div class="avatar" title="${t.assignee}">${t.assignee.substring(0, 2)}</div>
@@ -736,6 +782,55 @@
                 document.getElementById('modalSprintInput').value = currentSprint;
             }
         }
+
+
+
+        // Edit Modal Logic
+        const editModal = document.getElementById('editModal');
+        const editForm = document.getElementById('editForm');
+
+        function openEditModal(ticket) {
+            document.getElementById('editTicketId').value = ticket.id;
+            document.getElementById('editTicketTitle').value = ticket.title;
+            document.getElementById('editTicketDesc').value = ticket.description || "";
+            document.getElementById('editTicketType').value = ticket.type;
+            document.getElementById('editTicketPrio').value = ticket.priority;
+            editModal.classList.add('active');
+        }
+
+        function closeEditModal() {
+            editModal.classList.remove('active');
+            editForm.reset();
+        }
+
+        editForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const id = document.getElementById('editTicketId').value;
+            const payload = {
+                title: document.getElementById('editTicketTitle').value,
+                description: document.getElementById('editTicketDesc').value,
+                type: document.getElementById('editTicketType').value,
+                priority: document.getElementById('editTicketPrio').value
+            };
+
+            try {
+                const res = await fetch(`${API_URL}/${id}/update`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                if (res.ok) {
+                    closeEditModal();
+                    loadTickets();
+                } else {
+                    alert("Failed to update ticket");
+                }
+            } catch (err) {
+                console.error("Update failed", err);
+                alert("Error updating ticket");
+            }
+        });
 
         function closeModal() {
             modal.classList.remove('active');

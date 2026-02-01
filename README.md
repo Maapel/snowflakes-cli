@@ -131,7 +131,8 @@ A standard agent workflow looks like this:
 
 | Command | Description | Options |
 | :--- | :--- | :--- |
-| `new` | Create a new ticket. Interactive by default. | `--type`, `--prio`, `--assign` |
+| `new` | Create a new ticket. Interactive by default. | `--type`, `--prio`, `--assign`, `--desc` |
+| `edit` | Edit an existing ticket. | `--title`, `--desc`, `--type`, `--prio` |
 | `list` | List open tickets. | `--all`, `--sprint`, `--assignee`, `--json` |
 | `board` | View the Kanban Board. | `--sprint` |
 | `close-sprint` | Close a sprint and migrate tickets. | `--next-sprint` (required) |

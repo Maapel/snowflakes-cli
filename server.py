@@ -34,7 +34,7 @@ class TicketCreate(BaseModel):
     points: Optional[int] = 0
     sprint: Optional[str] = "Backlog"
 
-from main import create_ticket_logic, list_tickets_logic, move_ticket_logic
+from main import create_ticket_logic, list_tickets_logic, move_ticket_logic, edit_ticket_logic
 
 # ... imports ...
 
@@ -84,6 +84,27 @@ async def move_ticket(ticket_id: int, move: TicketMove):
     """Move a ticket to a new status via direct DB call."""
     try:
         move_ticket_logic(ticket_id, move.status)
+        return {"status": "success", "ticket_id": ticket_id}
+    except ValueError:
+        raise HTTPException(status_code=404, detail="Ticket not found")
+
+class TicketUpdate(BaseModel):
+    title: Optional[str] = None
+    description: Optional[str] = None
+    type: Optional[str] = None
+    priority: Optional[str] = None
+
+@app.post("/api/tickets/{ticket_id}/update")
+async def update_ticket(ticket_id: int, update: TicketUpdate):
+    """Update a ticket via direct DB call."""
+    try:
+        edit_ticket_logic(
+            ticket_id, 
+            title=update.title, 
+            desc=update.description, 
+            type=update.type, 
+            prio=update.priority
+        )
         return {"status": "success", "ticket_id": ticket_id}
     except ValueError:
         raise HTTPException(status_code=404, detail="Ticket not found")

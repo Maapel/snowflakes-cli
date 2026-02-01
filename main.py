@@ -71,6 +71,8 @@ Use `sw --project <path>` if working outside the current directory.
 - `sw list --json`: Dump all open tickets.
 
 [bold]4. Actions[/bold]
+- `sw new "Title"`: Interactive. Use `--desc "..."` for non-interactive description.
+- `sw edit <ID> --title ".." --desc ".." --type ".." --prio ".."`: Update details.
 - `sw move <ID> <STATUS>`: TODO, IN_PROGRESS, REVIEW, DONE
 - `sw estimate <ID> <POINTS>`: Fibonacci (1, 2, 3, 5, 8...)
 - `sw resolve <ID> --notes <TEXT>`: Resolution is required.
@@ -100,6 +102,9 @@ def new(
     if interactive and not title:
         rprint("[bold cyan]❄️  New Ticket Wizard[/bold cyan]")
         title = Prompt.ask("Title")
+        
+        if not desc:
+            desc = Prompt.ask("Description", default="")
         
         if not type:
             type = Prompt.ask("Type", choices=["STORY", "TASK", "BUG"], default="TASK")
@@ -381,6 +386,38 @@ def move_ticket_logic(ticket_id: int, status: str):
             raise ValueError(f"Ticket {ticket_id} not found")
             
         ticket.status = status.upper()
+        session.add(ticket)
+        session.commit()
+        session.refresh(ticket)
+        return ticket
+
+@app.command()
+def edit(
+    ticket_id: int,
+    title: Optional[str] = typer.Option(None, help="New title"),
+    desc: Optional[str] = typer.Option(None, help="New description"),
+    type: Optional[str] = typer.Option(None, help="New type"),
+    prio: Optional[str] = typer.Option(None, help="New priority"),
+):
+    """Edit an existing ticket's details."""
+    try:
+        updated = edit_ticket_logic(ticket_id, title, desc, type, prio)
+        rprint(f"[green]✓ Updated Ticket #{ticket_id}:[/green] {updated.title}")
+    except ValueError as e:
+        rprint(f"[red]{e}[/red]")
+        raise typer.Exit(code=1)
+
+def edit_ticket_logic(ticket_id: int, title=None, desc=None, type=None, prio=None):
+    with get_session() as session:
+        ticket = session.get(Ticket, ticket_id)
+        if not ticket:
+            raise ValueError(f"Ticket #{ticket_id} not found")
+        
+        if title: ticket.title = title
+        if desc: ticket.description = desc
+        if type: ticket.type = type.upper()
+        if prio: ticket.priority = prio.upper()
+        
         session.add(ticket)
         session.commit()
         session.refresh(ticket)
