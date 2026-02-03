@@ -4,6 +4,8 @@ A local-first Project Management System bundled as a single binary. It combines 
 
 The data lives in a `snowflakes.db` SQLite file in your project root. No cloud, no login, no setup.
 
+![Screenshot of snowflakes](snowflakes.png)
+
 ## Installation
 
 ### Method 1: Single Binary (Recommended)
