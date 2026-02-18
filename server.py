@@ -34,80 +34,31 @@ class TicketCreate(BaseModel):
     points: Optional[int] = 0
     sprint: Optional[str] = "Backlog"
 
-from main import create_ticket_logic, list_tickets_logic, move_ticket_logic, edit_ticket_logic
+from main import create_ticket_logic, list_tickets_logic, move_ticket_logic, edit_ticket_logic, list_comments_logic, create_comment_logic
 
 # ... imports ...
 
 app = FastAPI()
 
-# Setup logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+# ...
 
-class TicketCreate(BaseModel):
-    title: str
-    description: Optional[str] = None
-    type: Optional[str] = "TASK"
-    assignee: Optional[str] = "me"
-    priority: Optional[str] = "MEDIUM"
-    points: Optional[int] = 0
-    sprint: Optional[str] = "Backlog"
+class CommentCreate(BaseModel):
+    content: str
+    author: Optional[str] = "me"
 
-# run_cli_command removed
+@app.get("/api/tickets/{ticket_id}/comments")
+async def get_comments(ticket_id: int):
+    """Get all comments for a ticket."""
+    return list_comments_logic(ticket_id)
 
-@app.get("/api/tickets")
-async def get_tickets():
-    """Get all tickets via direct DB call."""
-    return list_tickets_logic(all=True)
-
-@app.post("/api/tickets")
-async def create_ticket(ticket: TicketCreate):
-    """Create a new ticket via direct DB call."""
-    new_ticket = create_ticket_logic(
-        title=ticket.title,
-        desc=ticket.description,
-        type=ticket.type,
-        assign=ticket.assignee,
-        prio=ticket.priority,
-        points=ticket.points,
-        sprint=ticket.sprint
-    )
-    return {"status": "success", "ticket_id": new_ticket.id}
-
-class TicketMove(BaseModel):
-    status: str
-
-
-
-@app.post("/api/tickets/{ticket_id}/move")
-async def move_ticket(ticket_id: int, move: TicketMove):
-    """Move a ticket to a new status via direct DB call."""
+@app.post("/api/tickets/{ticket_id}/comments")
+async def create_comment(ticket_id: int, comment: CommentCreate):
+    """Add a comment to a ticket."""
     try:
-        move_ticket_logic(ticket_id, move.status)
-        return {"status": "success", "ticket_id": ticket_id}
-    except ValueError:
-        raise HTTPException(status_code=404, detail="Ticket not found")
-
-class TicketUpdate(BaseModel):
-    title: Optional[str] = None
-    description: Optional[str] = None
-    type: Optional[str] = None
-    priority: Optional[str] = None
-
-@app.post("/api/tickets/{ticket_id}/update")
-async def update_ticket(ticket_id: int, update: TicketUpdate):
-    """Update a ticket via direct DB call."""
-    try:
-        edit_ticket_logic(
-            ticket_id, 
-            title=update.title, 
-            desc=update.description, 
-            type=update.type, 
-            prio=update.priority
-        )
-        return {"status": "success", "ticket_id": ticket_id}
-    except ValueError:
-        raise HTTPException(status_code=404, detail="Ticket not found")
+        new_comment = create_comment_logic(ticket_id, comment.content, comment.author)
+        return {"status": "success", "comment_id": new_comment.id}
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
 
 # Mount static files at root
 static_dir = os.environ.get("SNOWFLAKES_STATIC_DIR")

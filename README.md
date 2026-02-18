@@ -88,46 +88,44 @@ sw stop
 
 Snowflakes exposes project state as machine-readable JSON. This allows AI agents (Cursor, Windsurf, generic scripts) to read the board, pick up tasks, and report progress without hallucinating ticket IDs.
 
-### The Protocol
+### AI Agent Protocol
 
-**1. Reading State (`agent-read`)**
-Agents should run this to find assigned work. It returns only `OPEN` tickets assigned to `ai`.
+To enable an AI agent to use Snowflakes, you can include the following instructions in its system prompt:
+
+**Suggested System Prompt Snippet:**
+> You have access to a project management tool called Snowflakes. 
+> 1. Run `sw agent-read` to see your assigned tasks and their conversation history.
+> 2. Use `sw move <ID> IN_PROGRESS` when starting a task.
+> 3. Use `sw comment <ID> <TEXT> --author ai` to ask questions, report blockers, or provide updates.
+> 4. Use `sw resolve <ID> --notes <TEXT>` when finished.
+> 5. If you need more context on a ticket, use `sw view <ID>`.
+
+#### 1. Reading State (`agent-read`)
+Agents should run this to find assigned work. It returns `OPEN` tickets assigned to `ai`, including the **full conversation history** (comments).
 
 ```bash
 sw agent-read
-
 ```
 
-*Output:*
+#### 2. Communication & Collaboration
+Each ticket has a separate conversation thread. Agents should use this to:
+- **Report Blockers:** `sw comment 5 "Missing API documentation for the billing module" --author ai`
+- **Provide Updates:** `sw comment 5 "Finished the database migration script" --author ai`
+- **Reply to Users:** When a user adds a comment, the agent will see it in the next `agent-read` call and can respond.
 
-```json
-[
-  {
-    "id": 1,
-    "title": "Refactor auth middleware",
-    "description": "Switch to JWT...",
-    "type": "TASK",
-    "status": "TODO"
-  }
-]
+#### 3. Execution Workflow
+1. `sw agent-read` -> Agent parses JSON tasks + comments.
+2. `sw move <ID> IN_PROGRESS` -> Agent signals start.
+3. [Agent writes code]
+4. `sw comment <ID> "Implemented X, but found a bug in Y" --author ai` -> Optional update.
+5. `sw resolve <ID> --notes "Fixed via PR #12"` -> Agent closes ticket.
 
-```
-
-**2. Grooming Backlog (`groom-read`)**
+#### 4. Grooming Backlog (`groom-read`)
 Agents can run this to find tasks that need estimation or details (0 points or missing description).
 
 ```bash
 sw groom-read
-
 ```
-
-**3. Execution Loop**
-A standard agent workflow looks like this:
-
-1. `sw agent-read` -> Agent parses JSON.
-2. `sw move <ID> IN_PROGRESS` -> Agent signals start.
-3. [Agent writes code]
-4. `sw resolve <ID> --notes "Fixed via PR #12"` -> Agent closes ticket.
 
 ## Command Reference
 
@@ -143,7 +141,9 @@ A standard agent workflow looks like this:
 | `sprint` | Bulk assign tickets to a sprint. | `NAME ID...` |
 | `move` | Move a ticket to a new status. | `ID STATUS` |
 | `groom-read` | JSON output of unestimated backlog tickets. | |
-| `agent-read` | JSON output of AI-assigned OPEN tickets. | |
+| `agent-read` | JSON output of AI-assigned OPEN tickets (with comments). | |
+| `view` | View ticket details and full conversation. | `ID` |
+| `comment` | Add a comment to a ticket conversation. | `ID TEXT`, `--author` |
 | `start` | Start the Snowflakes Web UI. | |
 | `stop` | Stop the running Snowflakes Web UI. | |
 

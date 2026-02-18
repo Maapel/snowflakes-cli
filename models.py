@@ -17,3 +17,10 @@ class Ticket(SQLModel, table=True):
     priority: str = Field(default="MEDIUM")
     created_at: datetime = Field(default_factory=datetime.now)
     resolution_notes: Optional[str] = None
+
+class Comment(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    ticket_id: int = Field(foreign_key="ticket.id")
+    author: str = Field(default="me")
+    content: str
+    created_at: datetime = Field(default_factory=datetime.now)

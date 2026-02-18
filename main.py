@@ -10,13 +10,12 @@ from rich.panel import Panel
 from rich.prompt import Prompt, IntPrompt
 
 # Import our local modules
-from models import Ticket
+from models import Ticket, Comment
 from database import init_db, get_session
 import sys
 import os
 import signal
 import subprocess
-import webbrowser
 import webbrowser
 import time
 import shutil
@@ -42,8 +41,78 @@ def remove_pid():
     if os.path.exists(PID_FILE):
         os.remove(PID_FILE)
 
+# Add logic functions for comments
+def create_comment_logic(ticket_id: int, content: str, author: str = "me"):
+    with get_session() as session:
+        ticket = session.get(Ticket, ticket_id)
+        if not ticket:
+            raise ValueError(f"Ticket #{ticket_id} not found")
+        
+        comment = Comment(
+            ticket_id=ticket_id,
+            content=content,
+            author=author
+        )
+        session.add(comment)
+        session.commit()
+        session.refresh(comment)
+        return comment
+
+def list_comments_logic(ticket_id: int):
+    with get_session() as session:
+        statement = select(Comment).where(Comment.ticket_id == ticket_id).order_by(Comment.created_at)
+        return session.exec(statement).all()
+
 app = typer.Typer(add_completion=False)
 console = Console()
+
+@app.command()
+def view(ticket_id: int):
+    """View ticket details and conversation."""
+    with get_session() as session:
+        ticket = session.get(Ticket, ticket_id)
+        if not ticket:
+            rprint(f"[red]Ticket #{ticket_id} not found.[/red]")
+            raise typer.Exit(code=1)
+        
+        comments = list_comments_logic(ticket_id)
+
+    # Render Ticket Info
+    rprint(Panel(
+        f"[bold cyan]{ticket.title}[/bold cyan]\n"
+        f"[dim]{ticket.description or 'No description'}[/dim]\n\n"
+        f"Status: [magenta]{ticket.status}[/magenta] | Prio: {ticket.priority} | Pts: {ticket.points}\n"
+        f"Assignee: [purple]{ticket.assignee}[/purple] | Sprint: {ticket.sprint}",
+        title=f"Ticket #{ticket.id} [{ticket.type}]",
+        expand=False
+    ))
+
+    if ticket.resolution_notes:
+        rprint(Panel(f"[green]{ticket.resolution_notes}[/green]", title="Resolution Notes", expand=False))
+
+    # Render Conversation
+    if comments:
+        rprint("\n[bold]Conversation:[/bold]")
+        for c in comments:
+            author_style = "bold purple" if c.author == "ai" else "bold blue"
+            rprint(f"[{author_style}]{c.author}[/{author_style}] [dim]({c.created_at.strftime('%Y-%m-%d %H:%M')})[/dim]")
+            rprint(f"  {c.content}\n")
+    else:
+        rprint("\n[dim]No comments yet.[/dim]")
+
+@app.command()
+def comment(
+    ticket_id: int, 
+    content: str = typer.Argument(..., help="Comment text"),
+    author: str = typer.Option("me", help="Author of the comment")
+):
+    """Add a comment to a ticket."""
+    try:
+        create_comment_logic(ticket_id, content, author)
+        rprint(f"[green]✓ Added comment to Ticket #{ticket_id}[/green]")
+    except ValueError as e:
+        rprint(f"[red]{e}[/red]")
+        raise typer.Exit(code=1)
 
 @app.callback(invoke_without_command=True)
 def callback(
@@ -54,28 +123,31 @@ def callback(
     Snowflakes: A local-first Project Management System.
     """
     if agent_help:
-        rprint("""[bold cyan]Snowflakes AI Protocol[/bold cyan]
+        rprint("""[bold cyan]❄️ Snowflakes AI Protocol[/bold cyan]
 
-[bold]1. Structure[/bold]
-Data is stored in `snowflakes.db` in the project root.
-Use `sw --project <path>` if working outside the current directory.
+[bold]1. Overview[/bold]
+Snowflakes is a local-first PM system. Data is in `snowflakes.db`.
+Use `sw --project <path>` if the DB is not in the current directory.
 
-[bold]2. Workflow[/bold]
-1. [green]READ[/green]: `sw agent-read` -> Get assigned OPEN tickets (JSON).
-2. [yellow]WORK[/yellow]: `sw move <ID> IN_PROGRESS` -> Signal start.
-3. [blue]DONE[/blue]: `sw resolve <ID> --notes "Fixed..."` -> Close ticket.
+[bold]2. Core Loop[/bold]
+1. [green]SCAN[/green]: `sw agent-read` -> Get assigned OPEN tickets + full conversation history.
+2. [yellow]SIGNAL[/yellow]: `sw move <ID> IN_PROGRESS` -> Let others know you are working.
+3. [magenta]COMMUNICATE[/magenta]: 
+   - If blocked: `sw comment <ID> "Missing API key for X" --author ai`
+   - If update needed: `sw comment <ID> "Refactored the auth logic" --author ai`
+4. [blue]RESOLVE[/blue]: `sw resolve <ID> --notes "Fixed in commit a1b2c3"` -> Close ticket.
 
-[bold]3. Commands (JSON output enabled)[/bold]
-- `sw agent-read`: Get your tasks.
-- `sw groom-read`: Get backlog tasks needing estimation.
-- `sw list --json`: Dump all open tickets.
+[bold]3. Commands for Agents[/bold]
+- `sw agent-read`: JSON dump of AI-assigned tickets including all comments.
+- `sw comment <ID> <TEXT> --author ai`: Add to the ticket conversation.
+- `sw view <ID>`: See full ticket details and human-readable conversation.
+- `sw move <ID> <STATUS>`: Update status (TODO, IN_PROGRESS, REVIEW, DONE).
+- `sw groom-read`: Find backlog tasks needing description or estimation.
 
-[bold]4. Actions[/bold]
-- `sw new "Title"`: Interactive. Use `--desc "..."` for non-interactive description.
-- `sw edit <ID> --title ".." --desc ".." --type ".." --prio ".."`: Update details.
-- `sw move <ID> <STATUS>`: TODO, IN_PROGRESS, REVIEW, DONE
-- `sw estimate <ID> <POINTS>`: Fibonacci (1, 2, 3, 5, 8...)
-- `sw resolve <ID> --notes <TEXT>`: Resolution is required.
+[bold]4. System Prompt Hint[/bold]
+"You are a software engineer agent. Use `sw agent-read` to find your tasks. 
+Always signal progress with `sw move` and use `sw comment --author ai` 
+to report blockers or provide technical notes during the task lifecycle."
 """)
         raise typer.Exit()
 
@@ -207,41 +279,6 @@ def list_tickets_logic(all: bool = False, sprint: Optional[str] = None, assignee
             query = query.where(Ticket.assignee == assignee.lower())
             
         return session.exec(query).all()
-
-    if json_output:
-        data = [t.model_dump(mode='json') for t in tickets]
-        print(json.dumps(data, indent=2))
-        return
-
-    if not tickets:
-        rprint("[yellow]No tickets found.[/yellow]")
-        return
-
-    table = Table(title=f"Snowflakes ❄️  ({sprint if sprint else 'All Sprints'})")
-    table.add_column("ID", style="cyan", no_wrap=True)
-    table.add_column("Type", style="bold")
-    table.add_column("Status", style="magenta")
-    table.add_column("Sprint")
-    table.add_column("Pts")
-    table.add_column("Assignee")
-    table.add_column("Title")
-
-    for t in tickets:
-        assignee_style = "bold purple" if t.assignee == "ai" else "blue"
-        # Removed EPIC icon, added simple mapping
-        type_icon = "🐞" if t.type == "BUG" else "📝" if t.type == "STORY" else "🔨"
-        
-        table.add_row(
-            str(t.id), 
-            f"{type_icon} {t.type}",
-            t.status, 
-            t.sprint,
-            str(t.points),
-            f"[{assignee_style}]{t.assignee}[/{assignee_style}]", 
-            t.title
-        )
-
-    console.print(table)
 
 @app.command()
 def board(
@@ -440,19 +477,24 @@ def groom_read():
 
 @app.command("agent-read")
 def agent_read():
-    """Output OPEN tickets assigned to AI as JSON (Machine Readable)."""
+    """Output OPEN tickets assigned to AI as JSON (Machine Readable). Includes conversation history."""
     with get_session() as session:
         statement = select(Ticket).where(Ticket.assignee == "ai").where(Ticket.status != "DONE")
         tickets = session.exec(statement).all()
         
-    # Convert to dict manually for clean JSON output
-    data = [t.model_dump(mode='json') for t in tickets]
+    data = []
+    for t in tickets:
+        ticket_data = t.model_dump(mode='json')
+        comments = list_comments_logic(t.id)
+        ticket_data["comments"] = [c.model_dump(mode='json') for c in comments]
+        data.append(ticket_data)
+        
     print(json.dumps(data, indent=2))
 
 @app.command("internal-server", hidden=True)
 def internal_server(
     port: int = 8000,
-    host: str = "127.0.0.1",
+    host: str = "0.0.0.0",
     reload: bool = False
 ):
     """Run the uvicorn server directly (blocking). Used internally."""
@@ -470,7 +512,7 @@ def internal_server(
 @app.command("start")
 def start_server(
     port: int = typer.Option(8000, help="Port to run the UI on"),
-    host: str = typer.Option("127.0.0.1", help="Host to run the UI on")
+    host: str = typer.Option("0.0.0.0", help="Host to run the UI on")
 ):
     """Start the Snowflakes UI in the background."""
     pid = get_pid()

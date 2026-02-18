@@ -415,6 +415,51 @@
             color: var(--success);
             font-weight: 500;
         }
+
+        /* Conversation Styles */
+        .conversation-section {
+            margin-top: 2rem;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            padding-top: 1.5rem;
+        }
+
+        .comment {
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 0.5rem;
+            padding: 0.75rem;
+            margin-bottom: 0.75rem;
+        }
+
+        .comment-header {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.75rem;
+            color: #94a3b8;
+            margin-bottom: 0.25rem;
+        }
+
+        .comment-author {
+            font-weight: 600;
+        }
+
+        .comment-author.ai {
+            color: var(--secondary);
+        }
+
+        .comment-content {
+            font-size: 0.9rem;
+            line-height: 1.4;
+        }
+
+        .comment-form {
+            margin-top: 1rem;
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .comment-form input {
+            flex: 1;
+        }
     </style>
 </head>
 
@@ -504,6 +549,18 @@
                     <button type="submit" class="btn btn-primary">Save Changes</button>
                 </div>
             </form>
+
+            <!-- Conversation Section -->
+            <div class="conversation-section" id="conversationSection">
+                <h3 style="margin-bottom: 1rem; font-size: 1.1rem; color: #cbd5e1;">Conversation</h3>
+                <div id="commentsList">
+                    <!-- Populated dynamically -->
+                </div>
+                <div class="comment-form">
+                    <input type="text" id="newCommentInput" placeholder="Add a comment or reply...">
+                    <button class="btn-primary" onclick="postComment()" style="padding: 0.5rem 1rem; font-size: 0.8rem;">Send</button>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -788,15 +845,80 @@
         // Edit Modal Logic
         const editModal = document.getElementById('editModal');
         const editForm = document.getElementById('editForm');
+        const commentsList = document.getElementById('commentsList');
+        const newCommentInput = document.getElementById('newCommentInput');
 
-        function openEditModal(ticket) {
+        async function openEditModal(ticket) {
             document.getElementById('editTicketId').value = ticket.id;
             document.getElementById('editTicketTitle').value = ticket.title;
             document.getElementById('editTicketDesc').value = ticket.description || "";
             document.getElementById('editTicketType').value = ticket.type;
             document.getElementById('editTicketPrio').value = ticket.priority;
+            
+            // Load comments
+            await loadComments(ticket.id);
+            
             editModal.classList.add('active');
         }
+
+        async function loadComments(ticketId) {
+            try {
+                const res = await fetch(`${API_URL}/${ticketId}/comments`);
+                const comments = await res.json();
+                
+                commentsList.innerHTML = '';
+                if (comments.length === 0) {
+                    commentsList.innerHTML = '<div style="color: #94a3b8; font-size: 0.9rem; margin-bottom: 1rem;">No conversation yet.</div>';
+                } else {
+                    comments.forEach(c => {
+                        const commentDiv = document.createElement('div');
+                        commentDiv.className = 'comment';
+                        const authorClass = c.author === 'ai' ? 'comment-author ai' : 'comment-author';
+                        const dateStr = new Date(c.created_at).toLocaleString();
+                        commentDiv.innerHTML = `
+                            <div class="comment-header">
+                                <span class="${authorClass}">${c.author}</span>
+                                <span>${dateStr}</span>
+                            </div>
+                            <div class="comment-content">${c.content}</div>
+                        `;
+                        commentsList.appendChild(commentDiv);
+                    });
+                }
+            } catch (err) {
+                console.error("Failed to load comments", err);
+            }
+        }
+
+        async function postComment() {
+            const ticketId = document.getElementById('editTicketId').value;
+            const content = newCommentInput.value.trim();
+            if (!content) return;
+            
+            try {
+                const res = await fetch(`${API_URL}/${ticketId}/comments`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ content: content, author: 'me' })
+                });
+                
+                if (res.ok) {
+                    newCommentInput.value = '';
+                    await loadComments(ticketId);
+                } else {
+                    alert("Failed to post comment");
+                }
+            } catch (err) {
+                console.error("Post comment failed", err);
+            }
+        }
+
+        // Allow Enter to post comment
+        newCommentInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                postComment();
+            }
+        });
 
         function closeEditModal() {
             editModal.classList.remove('active');
