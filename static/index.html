@@ -4,27 +4,20 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Snowflakes ❄️</title>
+    <title>Snowflakes</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
         :root {
             --bg-color: #0f172a;
-            /* Slate 900 */
             --text-color: #f1f5f9;
-            /* Slate 100 */
             --card-bg: rgba(30, 41, 59, 0.7);
-            /* Slate 800 with alpha */
             --card-border: rgba(255, 255, 255, 0.1);
             --primary: #38bdf8;
-            /* Sky 400 */
             --secondary: #818cf8;
-            /* Indigo 400 */
             --accent: #f472b6;
-            /* Pink 400 */
             --success: #4ade80;
-            /* Green 400 */
             --glass-bg: rgba(255, 255, 255, 0.05);
             --glass-border: 1px solid rgba(255, 255, 255, 0.1);
             --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
@@ -50,7 +43,6 @@
             overflow-x: hidden;
         }
 
-        /* Header */
         header {
             padding: 1.5rem 2rem;
             display: flex;
@@ -88,6 +80,7 @@
             align-items: center;
             gap: 0.5rem;
             white-space: nowrap;
+            cursor: pointer;
         }
 
         button.btn-primary {
@@ -111,6 +104,21 @@
             box-shadow: 0 6px 20px rgba(56, 189, 248, 0.4);
         }
 
+        .btn-back {
+            background: transparent;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: var(--text-color);
+            padding: 0.5rem 1rem;
+            border-radius: 0.75rem;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: all 0.2s;
+        }
+
+        .btn-back:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
         select.filter-select {
             padding: 0.75rem 1rem;
             background: rgba(0, 0, 0, 0.3);
@@ -127,11 +135,136 @@
             border-color: var(--primary);
         }
 
-        /* Board Layout */
-        main {
+        /* ======================== */
+        /* Dashboard View           */
+        /* ======================== */
+
+        #dashboardView {
             flex: 1;
             padding: 2rem;
+        }
+
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .project-card {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 1rem;
+            padding: 1.5rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            box-shadow: var(--shadow);
+        }
+
+        .project-card:hover {
+            transform: translateY(-4px);
+            border-color: rgba(255, 255, 255, 0.2);
+            box-shadow: 0 12px 20px -4px rgba(0, 0, 0, 0.3);
+        }
+
+        .project-card-name {
+            font-size: 1.2rem;
+            font-weight: 700;
+            margin-bottom: 0.25rem;
+        }
+
+        .project-card-path {
+            font-size: 0.8rem;
+            color: #64748b;
+            margin-bottom: 1rem;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .project-stats {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+            margin-bottom: 1rem;
+        }
+
+        .stat-badge {
+            padding: 0.25rem 0.6rem;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .stat-todo { background: rgba(56, 189, 248, 0.15); color: var(--primary); }
+        .stat-in_progress { background: rgba(250, 204, 21, 0.15); color: #facc15; }
+        .stat-review { background: rgba(129, 140, 248, 0.15); color: var(--secondary); }
+        .stat-done { background: rgba(74, 222, 128, 0.15); color: var(--success); }
+
+        .agent-section {
+            border-top: 1px solid rgba(255, 255, 255, 0.08);
+            padding-top: 0.75rem;
+            margin-top: 0.5rem;
+        }
+
+        .agent-section-header {
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: #94a3b8;
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+        }
+
+        .agent-ticket-item {
+            font-size: 0.8rem;
+            color: #cbd5e1;
+            padding: 0.25rem 0;
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+        }
+
+        .agent-ticket-item .ticket-id {
+            color: var(--secondary);
+            font-weight: 600;
+        }
+
+        .pulse-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--success);
+            display: inline-block;
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+
+        .no-agent { color: #475569; font-size: 0.8rem; font-style: italic; }
+
+        /* ======================== */
+        /* Board View               */
+        /* ======================== */
+
+        #boardView {
+            flex: 1;
+            padding: 2rem;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .board-wrapper {
+            flex: 1;
             overflow-x: auto;
+            transition: margin-right 0.3s ease;
+        }
+
+        .board-wrapper.panel-open {
+            margin-right: 420px;
         }
 
         .board {
@@ -178,7 +311,6 @@
             font-size: 0.8rem;
         }
 
-        /* Ticket Card */
         .ticket {
             background: var(--card-bg);
             border: 1px solid var(--card-border);
@@ -198,14 +330,9 @@
             box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.2);
         }
 
-        .ticket:active {
-            cursor: grabbing;
-        }
-
-        .ticket.dragging {
-            opacity: 0.5;
-            transform: scale(0.95);
-        }
+        .ticket:active { cursor: grabbing; }
+        .ticket.dragging { opacity: 0.5; transform: scale(0.95); }
+        .ticket.selected { border-color: var(--primary); box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.3); }
 
         .ticket::before {
             content: '';
@@ -216,17 +343,9 @@
             height: 100%;
         }
 
-        .ticket.type-STORY::before {
-            background: var(--primary);
-        }
-
-        .ticket.type-BUG::before {
-            background: var(--accent);
-        }
-
-        .ticket.type-TASK::before {
-            background: var(--success);
-        }
+        .ticket.type-STORY::before { background: var(--primary); }
+        .ticket.type-BUG::before { background: var(--accent); }
+        .ticket.type-TASK::before { background: var(--success); }
 
         .ticket-header {
             display: flex;
@@ -271,7 +390,229 @@
             text-transform: uppercase;
         }
 
-        /* Modal */
+        /* ======================== */
+        /* Slide-out Chat Panel     */
+        /* ======================== */
+
+        .chat-panel {
+            position: fixed;
+            top: 0;
+            right: -420px;
+            width: 400px;
+            height: 100vh;
+            background: #1e293b;
+            border-left: 1px solid rgba(255, 255, 255, 0.1);
+            z-index: 200;
+            display: flex;
+            flex-direction: column;
+            transition: right 0.3s ease;
+            box-shadow: -4px 0 20px rgba(0, 0, 0, 0.3);
+        }
+
+        .chat-panel.open {
+            right: 0;
+        }
+
+        .chat-panel-header {
+            padding: 1.25rem 1.5rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .chat-panel-header h3 {
+            font-size: 1rem;
+            font-weight: 600;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            flex: 1;
+            margin-right: 1rem;
+        }
+
+        .chat-panel-close {
+            background: none;
+            border: none;
+            color: #94a3b8;
+            font-size: 1.2rem;
+            cursor: pointer;
+            padding: 0.25rem;
+        }
+
+        .chat-panel-close:hover { color: var(--text-color); }
+
+        /* Details section */
+        .details-section {
+            padding: 1rem 1.5rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .details-toggle {
+            background: none;
+            border: none;
+            color: #94a3b8;
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            padding: 0;
+            margin-bottom: 0.5rem;
+        }
+
+        .details-toggle:hover { color: var(--text-color); }
+
+        .details-body {
+            display: none;
+        }
+
+        .details-body.open {
+            display: block;
+        }
+
+        .detail-row {
+            margin-bottom: 0.75rem;
+        }
+
+        .detail-row label {
+            display: block;
+            font-size: 0.75rem;
+            color: #64748b;
+            margin-bottom: 0.25rem;
+        }
+
+        .detail-row input,
+        .detail-row textarea,
+        .detail-row select {
+            width: 100%;
+            padding: 0.5rem 0.75rem;
+            background: rgba(0, 0, 0, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 0.5rem;
+            color: white;
+            font-size: 0.85rem;
+        }
+
+        .detail-row textarea {
+            resize: vertical;
+            min-height: 60px;
+        }
+
+        .details-actions {
+            display: flex;
+            gap: 0.5rem;
+            margin-top: 0.5rem;
+        }
+
+        .btn-save-details {
+            background: var(--primary);
+            border: none;
+            color: white;
+            padding: 0.4rem 1rem;
+            border-radius: 0.5rem;
+            font-size: 0.8rem;
+            cursor: pointer;
+            font-weight: 600;
+        }
+
+        .btn-save-details:hover { opacity: 0.9; }
+
+        /* Chat messages */
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 1rem 1.5rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+
+        .chat-bubble {
+            max-width: 85%;
+            padding: 0.75rem 1rem;
+            border-radius: 1rem;
+            font-size: 0.9rem;
+            line-height: 1.4;
+            word-wrap: break-word;
+        }
+
+        .chat-bubble.me {
+            align-self: flex-end;
+            background: rgba(56, 189, 248, 0.2);
+            border: 1px solid rgba(56, 189, 248, 0.3);
+            border-bottom-right-radius: 0.25rem;
+        }
+
+        .chat-bubble.ai {
+            align-self: flex-start;
+            background: rgba(129, 140, 248, 0.15);
+            border: 1px solid rgba(129, 140, 248, 0.25);
+            border-bottom-left-radius: 0.25rem;
+        }
+
+        .chat-bubble .bubble-author {
+            font-size: 0.7rem;
+            font-weight: 600;
+            margin-bottom: 0.25rem;
+            opacity: 0.7;
+        }
+
+        .chat-bubble .bubble-time {
+            font-size: 0.65rem;
+            opacity: 0.5;
+            margin-top: 0.35rem;
+            text-align: right;
+        }
+
+        .chat-empty {
+            color: #475569;
+            font-size: 0.9rem;
+            text-align: center;
+            margin-top: 2rem;
+        }
+
+        /* Chat input */
+        .chat-input-bar {
+            padding: 1rem 1.5rem;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .chat-input-bar input {
+            flex: 1;
+            padding: 0.65rem 1rem;
+            background: rgba(0, 0, 0, 0.25);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 0.75rem;
+            color: white;
+            font-size: 0.9rem;
+        }
+
+        .chat-input-bar input:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+
+        .chat-input-bar button {
+            background: var(--primary);
+            border: none;
+            color: white;
+            padding: 0.65rem 1.25rem;
+            border-radius: 0.75rem;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 0.85rem;
+        }
+
+        .chat-input-bar button:hover { opacity: 0.9; }
+
+        /* ======================== */
+        /* Create Modal             */
+        /* ======================== */
+
         .modal-overlay {
             position: fixed;
             top: 0;
@@ -306,13 +647,9 @@
             transition: transform 0.3s ease;
         }
 
-        .modal-overlay.active .modal {
-            transform: translateY(0);
-        }
+        .modal-overlay.active .modal { transform: translateY(0); }
 
-        .form-group {
-            margin-bottom: 1.5rem;
-        }
+        .form-group { margin-bottom: 1.5rem; }
 
         label {
             display: block;
@@ -321,9 +658,7 @@
             color: #94a3b8;
         }
 
-        input,
-        textarea,
-        select {
+        input, textarea, select {
             width: 100%;
             padding: 0.75rem;
             background: rgba(0, 0, 0, 0.2);
@@ -334,9 +669,7 @@
             transition: border-color 0.2s;
         }
 
-        input:focus,
-        textarea:focus,
-        select:focus {
+        input:focus, textarea:focus, select:focus {
             outline: none;
             border-color: var(--primary);
         }
@@ -366,16 +699,10 @@
             animation: spin 1s linear infinite;
         }
 
-        @keyframes spin {
-            to {
-                transform: rotate(360deg);
-            }
-        }
+        @keyframes spin { to { transform: rotate(360deg); } }
 
-        /* Combobox Styles */
-        .combobox-container {
-            position: relative;
-        }
+        /* Combobox */
+        .combobox-container { position: relative; }
 
         .dropdown-menu {
             position: absolute;
@@ -393,9 +720,7 @@
             box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
         }
 
-        .dropdown-menu.show {
-            display: block;
-        }
+        .dropdown-menu.show { display: block; }
 
         .dropdown-item {
             padding: 0.75rem 1rem;
@@ -404,8 +729,7 @@
             transition: background 0.2s;
         }
 
-        .dropdown-item:hover,
-        .dropdown-item.active {
+        .dropdown-item:hover, .dropdown-item.active {
             background: rgba(56, 189, 248, 0.1);
             color: var(--primary);
         }
@@ -416,49 +740,10 @@
             font-weight: 500;
         }
 
-        /* Conversation Styles */
-        .conversation-section {
-            margin-top: 2rem;
-            border-top: 1px solid rgba(255, 255, 255, 0.1);
-            padding-top: 1.5rem;
-        }
-
-        .comment {
-            background: rgba(255, 255, 255, 0.03);
-            border-radius: 0.5rem;
-            padding: 0.75rem;
-            margin-bottom: 0.75rem;
-        }
-
-        .comment-header {
-            display: flex;
-            justify-content: space-between;
-            font-size: 0.75rem;
-            color: #94a3b8;
-            margin-bottom: 0.25rem;
-        }
-
-        .comment-author {
-            font-weight: 600;
-        }
-
-        .comment-author.ai {
-            color: var(--secondary);
-        }
-
-        .comment-content {
-            font-size: 0.9rem;
-            line-height: 1.4;
-        }
-
-        .comment-form {
-            margin-top: 1rem;
-            display: flex;
-            gap: 0.5rem;
-        }
-
-        .comment-form input {
-            flex: 1;
+        .project-header-info {
+            font-size: 0.8rem;
+            color: #64748b;
+            margin-left: 0.5rem;
         }
     </style>
 </head>
@@ -467,104 +752,103 @@
 
     <header>
         <div class="header-left">
-            <h1>❄️ Snowflakes</h1>
-            <div class="header-controls">
+            <button class="btn-back" id="backBtn" style="display:none" onclick="location.hash='#/'">&#8592; Dashboard</button>
+            <h1 onclick="location.hash='#/'">&#10052; Snowflakes</h1>
+            <span class="project-header-info" id="projectHeaderInfo"></span>
+            <div class="header-controls" id="boardControls" style="display:none">
                 <select id="sprintFilter" class="filter-select">
                     <option value="ALL">All Sprints</option>
-                    <!-- Populated dynamically -->
                 </select>
-
                 <select id="userFilter" class="filter-select">
                     <option value="ALL">All Users</option>
-                    <!-- Populated dynamically -->
                 </select>
             </div>
         </div>
 
-        <button class="btn-primary" onclick="openModal()">
+        <button class="btn-primary" id="newTicketBtn" style="display:none" onclick="openModal()">
             <span>+</span> New Ticket
         </button>
     </header>
 
-    <main>
-        <div class="board">
-            <!-- Columns must match CLI status exactly: TODO, IN_PROGRESS, REVIEW, DONE -->
-            <div class="column" id="col-TODO" data-status="TODO">
-                <div class="column-header">
-                    Todo <span class="column-count">0</span>
+    <!-- ========== Dashboard View ========== -->
+    <div id="dashboardView" style="display:none">
+        <div class="dashboard-grid" id="dashboardGrid">
+            <!-- Project cards rendered here -->
+        </div>
+    </div>
+
+    <!-- ========== Board View ========== -->
+    <div id="boardView" style="display:none">
+        <div class="board-wrapper" id="boardWrapper">
+            <div class="board">
+                <div class="column" id="col-TODO" data-status="TODO">
+                    <div class="column-header">Todo <span class="column-count">0</span></div>
                 </div>
-            </div>
-            <div class="column" id="col-IN_PROGRESS" data-status="IN_PROGRESS">
-                <div class="column-header">
-                    In Progress <span class="column-count">0</span>
+                <div class="column" id="col-IN_PROGRESS" data-status="IN_PROGRESS">
+                    <div class="column-header">In Progress <span class="column-count">0</span></div>
                 </div>
-            </div>
-            <div class="column" id="col-REVIEW" data-status="REVIEW">
-                <div class="column-header">
-                    Review <span class="column-count">0</span>
+                <div class="column" id="col-REVIEW" data-status="REVIEW">
+                    <div class="column-header">Review <span class="column-count">0</span></div>
                 </div>
-            </div>
-            <div class="column" id="col-DONE" data-status="DONE">
-                <div class="column-header">
-                    Done <span class="column-count">0</span>
+                <div class="column" id="col-DONE" data-status="DONE">
+                    <div class="column-header">Done <span class="column-count">0</span></div>
                 </div>
             </div>
         </div>
-    </main>
+    </div>
 
-    <!-- Edit Ticket Modal -->
-    <div class="modal-overlay" id="editModal">
-        <div class="modal">
-            <h2 style="margin-bottom: 1.5rem;">Edit Ticket</h2>
-            <form id="editForm">
-                <input type="hidden" name="id" id="editTicketId">
-                <div class="form-group">
+    <!-- ========== Chat Panel ========== -->
+    <div class="chat-panel" id="chatPanel">
+        <div class="chat-panel-header">
+            <h3 id="chatPanelTitle">Ticket</h3>
+            <button class="chat-panel-close" onclick="closeChatPanel()">&times;</button>
+        </div>
+        <div class="details-section">
+            <button class="details-toggle" onclick="toggleDetails()">
+                <span id="detailsArrow">&#9654;</span> Details
+            </button>
+            <div class="details-body" id="detailsBody">
+                <div class="detail-row">
                     <label>Title</label>
-                    <input type="text" name="title" id="editTicketTitle" required>
+                    <input type="text" id="panelTitle">
                 </div>
-                <div class="form-group">
+                <div class="detail-row">
                     <label>Description</label>
-                    <textarea name="description" id="editTicketDesc" rows="5"></textarea>
+                    <textarea id="panelDesc" rows="3"></textarea>
                 </div>
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
-                    <div class="form-group">
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.75rem;">
+                    <div class="detail-row">
                         <label>Type</label>
-                        <select name="type" id="editTicketType">
+                        <select id="panelType">
                             <option value="TASK">Task</option>
                             <option value="STORY">Story</option>
                             <option value="BUG">Bug</option>
                         </select>
                     </div>
-                    <div class="form-group">
+                    <div class="detail-row">
                         <label>Priority</label>
-                        <select name="priority" id="editTicketPrio">
+                        <select id="panelPrio">
                             <option value="MEDIUM">Medium</option>
                             <option value="HIGH">High</option>
                             <option value="LOW">Low</option>
                         </select>
                     </div>
                 </div>
-                <div class="modal-actions">
-                    <button type="button" class="btn btn-secondary" onclick="closeEditModal()">Cancel</button>
-                    <button type="submit" class="btn btn-primary">Save Changes</button>
-                </div>
-            </form>
-
-            <!-- Conversation Section -->
-            <div class="conversation-section" id="conversationSection">
-                <h3 style="margin-bottom: 1rem; font-size: 1.1rem; color: #cbd5e1;">Conversation</h3>
-                <div id="commentsList">
-                    <!-- Populated dynamically -->
-                </div>
-                <div class="comment-form">
-                    <input type="text" id="newCommentInput" placeholder="Add a comment or reply...">
-                    <button class="btn-primary" onclick="postComment()" style="padding: 0.5rem 1rem; font-size: 0.8rem;">Send</button>
+                <div class="details-actions">
+                    <button class="btn-save-details" onclick="saveTicketDetails()">Save</button>
                 </div>
             </div>
         </div>
+        <div class="chat-messages" id="chatMessages">
+            <div class="chat-empty">No conversation yet.</div>
+        </div>
+        <div class="chat-input-bar">
+            <input type="text" id="chatInput" placeholder="Type a message..." autocomplete="off">
+            <button onclick="sendChatMessage()">Send</button>
+        </div>
     </div>
 
-    <!-- Create Ticket Modal -->
+    <!-- ========== Create Ticket Modal ========== -->
     <div class="modal-overlay" id="createModal">
         <div class="modal">
             <h2 style="margin-bottom: 1.5rem;">Create New Ticket</h2>
@@ -599,9 +883,7 @@
                     <label>Sprint</label>
                     <div class="combobox-container">
                         <input type="text" name="sprint" value="Backlog" id="modalSprintInput" autocomplete="off">
-                        <div class="dropdown-menu" id="sprintDropdown">
-                            <!-- Populated dynamically -->
-                        </div>
+                        <div class="dropdown-menu" id="sprintDropdown"></div>
                     </div>
                 </div>
                 <div class="modal-actions">
@@ -613,17 +895,144 @@
     </div>
 
     <script>
-        const API_URL = '/api/tickets';
+        // =====================
+        // State
+        // =====================
+        let currentProjectId = null;
         let allTickets = [];
         let dragSrcEl = null;
+        let selectedTicket = null;
 
-        // Fetch and Render Tickets
+        // =====================
+        // Router
+        // =====================
+        function getApiBase() {
+            if (currentProjectId !== null) {
+                return `/api/projects/${currentProjectId}/tickets`;
+            }
+            return '/api/tickets';
+        }
+
+        window.addEventListener('hashchange', route);
+        function route() {
+            const hash = location.hash || '#/';
+            if (hash.startsWith('#/project/')) {
+                currentProjectId = parseInt(hash.split('/')[2]);
+                showBoardView();
+            } else {
+                currentProjectId = null;
+                showDashboardView();
+            }
+        }
+
+        function showDashboardView() {
+            document.getElementById('dashboardView').style.display = '';
+            document.getElementById('boardView').style.display = 'none';
+            document.getElementById('boardControls').style.display = 'none';
+            document.getElementById('newTicketBtn').style.display = 'none';
+            document.getElementById('backBtn').style.display = 'none';
+            document.getElementById('projectHeaderInfo').textContent = '';
+            closeChatPanel();
+            loadProjects();
+        }
+
+        function showBoardView() {
+            document.getElementById('dashboardView').style.display = 'none';
+            document.getElementById('boardView').style.display = '';
+            document.getElementById('boardControls').style.display = 'flex';
+            document.getElementById('newTicketBtn').style.display = 'flex';
+            document.getElementById('backBtn').style.display = '';
+            closeChatPanel();
+            loadTickets();
+        }
+
+        // =====================
+        // Dashboard
+        // =====================
+        async function loadProjects() {
+            try {
+                const res = await fetch('/api/projects');
+                const projects = await res.json();
+                renderDashboard(projects);
+            } catch (err) {
+                console.error("Failed to load projects", err);
+                // Fallback: if no projects endpoint, go straight to board
+                document.getElementById('dashboardView').innerHTML = '<div style="padding:2rem;color:#64748b;">No projects registered yet. Run <code>sw list</code> in a project directory to register it.</div>';
+            }
+        }
+
+        function renderDashboard(projects) {
+            const grid = document.getElementById('dashboardGrid');
+            grid.innerHTML = '';
+
+            if (projects.length === 0) {
+                grid.innerHTML = '<div style="color:#64748b; grid-column:1/-1; text-align:center; padding:3rem;">No projects registered yet. Run <code style="color:var(--primary)">sw list</code> in a project directory to register it.</div>';
+                return;
+            }
+
+            projects.forEach(p => {
+                const card = document.createElement('div');
+                card.className = 'project-card';
+                card.onclick = () => { location.hash = `#/project/${p.id}`; };
+
+                const s = p.stats;
+                const hasActiveAgent = s.agent_tickets.some(t => t.status === 'IN_PROGRESS');
+
+                let agentHtml = '';
+                if (s.agent_tickets.length > 0) {
+                    agentHtml = s.agent_tickets.map(t =>
+                        `<div class="agent-ticket-item"><span class="ticket-id">#${t.id}</span> ${escapeHtml(t.title)}</div>`
+                    ).join('');
+                } else {
+                    agentHtml = '<div class="no-agent">(none)</div>';
+                }
+
+                card.innerHTML = `
+                    <div class="project-card-name">${escapeHtml(p.name)}</div>
+                    <div class="project-card-path">${escapeHtml(p.path)}</div>
+                    <div class="project-stats">
+                        <span class="stat-badge stat-todo">TODO: ${s.todo}</span>
+                        <span class="stat-badge stat-in_progress">In Progress: ${s.in_progress}</span>
+                        <span class="stat-badge stat-review">Review: ${s.review}</span>
+                        <span class="stat-badge stat-done">Done: ${s.done}</span>
+                    </div>
+                    <div class="agent-section">
+                        <div class="agent-section-header">
+                            ${hasActiveAgent ? '<span class="pulse-dot"></span>' : ''}
+                            &#129302; AI Active: ${s.agent_active}
+                        </div>
+                        ${agentHtml}
+                    </div>
+                `;
+                grid.appendChild(card);
+            });
+        }
+
+        function escapeHtml(str) {
+            if (!str) return '';
+            return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+        }
+
+        // =====================
+        // Board
+        // =====================
         async function loadTickets() {
             try {
-                const res = await fetch(API_URL);
+                const res = await fetch(getApiBase());
                 allTickets = await res.json();
                 populateFilters(allTickets);
                 renderBoard();
+                // Update header info
+                if (currentProjectId !== null) {
+                    try {
+                        const projRes = await fetch('/api/projects');
+                        const projects = await projRes.json();
+                        const proj = projects.find(p => p.id === currentProjectId);
+                        if (proj) {
+                            document.getElementById('projectHeaderInfo').textContent = `${proj.name} - ${proj.path}`;
+                        }
+                    } catch(e) {}
+                }
             } catch (err) {
                 console.error("Failed to load tickets", err);
             }
@@ -632,20 +1041,16 @@
         function populateFilters(tickets) {
             const sprintFilter = document.getElementById('sprintFilter');
             const userFilter = document.getElementById('userFilter');
-
-            // Get current selections
             const currentSprint = sprintFilter.value;
             const currentUser = userFilter.value;
 
             const sprints = new Set();
             const users = new Set();
-
             tickets.forEach(t => {
                 if (t.sprint) sprints.add(t.sprint);
                 if (t.assignee) users.add(t.assignee);
             });
 
-            // Populate Sprints
             sprintFilter.innerHTML = '<option value="ALL">All Sprints</option>';
             Array.from(sprints).sort().forEach(s => {
                 const opt = document.createElement('option');
@@ -654,11 +1059,8 @@
                 sprintFilter.appendChild(opt);
             });
             sprintFilter.value = currentSprint;
-            // If current sprint no longer exists, reset to ALL
             if (sprintFilter.value !== currentSprint) sprintFilter.value = 'ALL';
 
-
-            // Populate Users
             userFilter.innerHTML = '<option value="ALL">All Users</option>';
             Array.from(users).sort().forEach(u => {
                 const opt = document.createElement('option');
@@ -674,18 +1076,15 @@
             const sprintFilterVal = document.getElementById('sprintFilter').value;
             const userFilterVal = document.getElementById('userFilter').value;
 
-            // Filter
             const tickets = allTickets.filter(t => {
                 const matchSprint = sprintFilterVal === 'ALL' || t.sprint === sprintFilterVal;
                 const matchUser = userFilterVal === 'ALL' || t.assignee === userFilterVal;
                 return matchSprint && matchUser;
             });
 
-            // Clear columns
             document.querySelectorAll('.column-count').forEach(el => el.textContent = '0');
             ['TODO', 'IN_PROGRESS', 'REVIEW', 'DONE'].forEach(status => {
                 const col = document.getElementById(`col-${status}`);
-                // Keep header, remove tickets
                 while (col.childNodes.length > 2) {
                     col.removeChild(col.lastChild);
                 }
@@ -697,60 +1096,59 @@
                 const col = document.getElementById(`col-${status}`);
                 if (col) {
                     col.appendChild(card);
-                    // Update count
                     const countSpan = col.querySelector('.column-count');
                     countSpan.textContent = parseInt(countSpan.textContent) + 1;
                 }
             });
 
-            // Re-bind Drag Events for new tickets
             bindTicketEvents();
         }
 
         function createTicketCard(t) {
             const div = document.createElement('div');
             div.className = `ticket type-${t.type}`;
+            if (selectedTicket && selectedTicket.id === t.id) {
+                div.classList.add('selected');
+            }
             div.setAttribute('draggable', 'true');
             div.dataset.id = t.id;
             div.onclick = (e) => {
-                // Prevent opening when dragging
                 if (div.classList.contains('dragging')) return;
-                openEditModal(t);
+                openChatPanel(t);
             };
             div.innerHTML = `
                 <div class="ticket-header">
-                    <span>#${t.id} ${t.sprint}</span>
+                    <span>#${t.id} ${escapeHtml(t.sprint)}</span>
                     <span>${getIcon(t.type)}</span>
                 </div>
-                <div class="ticket-title">${t.title}</div>
-                <div class="ticket-desc" style="font-size: 0.8rem; opacity: 0.7; margin-bottom: 0.5rem; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">${t.description || ""}</div>
+                <div class="ticket-title">${escapeHtml(t.title)}</div>
+                <div style="font-size:0.8rem;opacity:0.7;margin-bottom:0.5rem;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;">${escapeHtml(t.description || '')}</div>
                 <div class="ticket-meta">
                     <span class="badge">${t.points} pts</span>
-                    <div class="avatar" title="${t.assignee}">${t.assignee.substring(0, 2)}</div>
+                    <div class="avatar" title="${escapeHtml(t.assignee)}">${escapeHtml((t.assignee || '').substring(0, 2))}</div>
                 </div>
             `;
             return div;
         }
 
         function getIcon(type) {
-            if (type === 'BUG') return '🐞';
-            if (type === 'STORY') return '📝';
-            return '🔨'; // TASK
+            if (type === 'BUG') return '&#128030;';
+            if (type === 'STORY') return '&#128221;';
+            return '&#128296;';
         }
 
-        // Drag and Drop Logic
-        // Drag and Drop Logic
+        // =====================
+        // Drag & Drop
+        // =====================
         function bindTicketEvents() {
-            const tickets = document.querySelectorAll('.ticket');
-            tickets.forEach(ticket => {
+            document.querySelectorAll('.ticket').forEach(ticket => {
                 ticket.addEventListener('dragstart', handleDragStart);
                 ticket.addEventListener('dragend', handleDragEnd);
             });
         }
 
         function setupColumnDnD() {
-            const columns = document.querySelectorAll('.column');
-            columns.forEach(col => {
+            document.querySelectorAll('.column').forEach(col => {
                 col.addEventListener('dragover', handleDragOver);
                 col.addEventListener('dragleave', handleDragLeave);
                 col.addEventListener('drop', handleDrop);
@@ -764,55 +1162,41 @@
             e.dataTransfer.setData('text/plain', this.dataset.id);
         }
 
-        function handleDragEnd(e) {
+        function handleDragEnd() {
             this.classList.remove('dragging');
-            document.querySelectorAll('.column').forEach(col => {
-                col.classList.remove('drag-over');
-            });
+            document.querySelectorAll('.column').forEach(col => col.classList.remove('drag-over'));
         }
 
         function handleDragOver(e) {
-            if (e.preventDefault) {
-                e.preventDefault();
-            }
+            e.preventDefault();
             this.classList.add('drag-over');
             e.dataTransfer.dropEffect = 'move';
             return false;
         }
 
-        function handleDragLeave(e) {
-            this.classList.remove('drag-over');
-        }
+        function handleDragLeave() { this.classList.remove('drag-over'); }
 
         async function handleDrop(e) {
-            if (e.stopPropagation) {
-                e.stopPropagation();
-            }
+            e.stopPropagation();
             this.classList.remove('drag-over');
 
             const ticketId = e.dataTransfer.getData('text/plain');
             const newStatus = this.getAttribute('data-status');
 
             if (dragSrcEl) {
-                // Optimistic UI update
                 this.appendChild(dragSrcEl);
-                // Update internal state
                 const ticket = allTickets.find(t => t.id == ticketId);
                 if (ticket) ticket.status = newStatus;
-
-                // Recalculate counts
                 renderBoard();
 
-                // Call API
                 try {
-                    const res = await fetch(`${API_URL}/${ticketId}/move`, {
+                    const res = await fetch(`${getApiBase()}/${ticketId}/move`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ status: newStatus })
                     });
                     if (!res.ok) {
                         alert("Failed to move ticket on server");
-                        // Revert could be implemented here, but simple reload is easier
                         loadTickets();
                     }
                 } catch (err) {
@@ -823,136 +1207,144 @@
             return false;
         }
 
-        // Filters Event Listeners
         document.getElementById('sprintFilter').addEventListener('change', renderBoard);
         document.getElementById('userFilter').addEventListener('change', renderBoard);
 
-        // Modal Logic
-        const modal = document.getElementById('createModal');
-        const form = document.getElementById('createForm');
+        // =====================
+        // Chat Panel
+        // =====================
+        function openChatPanel(ticket) {
+            selectedTicket = ticket;
+            const panel = document.getElementById('chatPanel');
+            document.getElementById('chatPanelTitle').textContent = `#${ticket.id} ${ticket.title}`;
+            document.getElementById('panelTitle').value = ticket.title;
+            document.getElementById('panelDesc').value = ticket.description || '';
+            document.getElementById('panelType').value = ticket.type;
+            document.getElementById('panelPrio').value = ticket.priority;
 
-        function openModal() {
-            modal.classList.add('active');
-            // Pre-fill sprint if selected filter is not ALL
-            const currentSprint = document.getElementById('sprintFilter').value;
-            if (currentSprint !== 'ALL') {
-                document.getElementById('modalSprintInput').value = currentSprint;
-            }
+            panel.classList.add('open');
+            document.getElementById('boardWrapper').classList.add('panel-open');
+            renderBoard(); // re-render to highlight selected
+
+            loadChatMessages(ticket.id);
         }
 
-
-
-        // Edit Modal Logic
-        const editModal = document.getElementById('editModal');
-        const editForm = document.getElementById('editForm');
-        const commentsList = document.getElementById('commentsList');
-        const newCommentInput = document.getElementById('newCommentInput');
-
-        async function openEditModal(ticket) {
-            document.getElementById('editTicketId').value = ticket.id;
-            document.getElementById('editTicketTitle').value = ticket.title;
-            document.getElementById('editTicketDesc').value = ticket.description || "";
-            document.getElementById('editTicketType').value = ticket.type;
-            document.getElementById('editTicketPrio').value = ticket.priority;
-            
-            // Load comments
-            await loadComments(ticket.id);
-            
-            editModal.classList.add('active');
+        function closeChatPanel() {
+            selectedTicket = null;
+            document.getElementById('chatPanel').classList.remove('open');
+            document.getElementById('boardWrapper').classList.remove('panel-open');
+            // Close details
+            document.getElementById('detailsBody').classList.remove('open');
+            document.getElementById('detailsArrow').innerHTML = '&#9654;';
+            renderBoard();
         }
 
-        async function loadComments(ticketId) {
-            try {
-                const res = await fetch(`${API_URL}/${ticketId}/comments`);
-                const comments = await res.json();
-                
-                commentsList.innerHTML = '';
-                if (comments.length === 0) {
-                    commentsList.innerHTML = '<div style="color: #94a3b8; font-size: 0.9rem; margin-bottom: 1rem;">No conversation yet.</div>';
-                } else {
-                    comments.forEach(c => {
-                        const commentDiv = document.createElement('div');
-                        commentDiv.className = 'comment';
-                        const authorClass = c.author === 'ai' ? 'comment-author ai' : 'comment-author';
-                        const dateStr = new Date(c.created_at).toLocaleString();
-                        commentDiv.innerHTML = `
-                            <div class="comment-header">
-                                <span class="${authorClass}">${c.author}</span>
-                                <span>${dateStr}</span>
-                            </div>
-                            <div class="comment-content">${c.content}</div>
-                        `;
-                        commentsList.appendChild(commentDiv);
-                    });
-                }
-            } catch (err) {
-                console.error("Failed to load comments", err);
-            }
+        function toggleDetails() {
+            const body = document.getElementById('detailsBody');
+            const arrow = document.getElementById('detailsArrow');
+            body.classList.toggle('open');
+            arrow.innerHTML = body.classList.contains('open') ? '&#9660;' : '&#9654;';
         }
 
-        async function postComment() {
-            const ticketId = document.getElementById('editTicketId').value;
-            const content = newCommentInput.value.trim();
-            if (!content) return;
-            
-            try {
-                const res = await fetch(`${API_URL}/${ticketId}/comments`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ content: content, author: 'me' })
-                });
-                
-                if (res.ok) {
-                    newCommentInput.value = '';
-                    await loadComments(ticketId);
-                } else {
-                    alert("Failed to post comment");
-                }
-            } catch (err) {
-                console.error("Post comment failed", err);
-            }
-        }
-
-        // Allow Enter to post comment
-        newCommentInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') {
-                postComment();
-            }
-        });
-
-        function closeEditModal() {
-            editModal.classList.remove('active');
-            editForm.reset();
-        }
-
-        editForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const id = document.getElementById('editTicketId').value;
+        async function saveTicketDetails() {
+            if (!selectedTicket) return;
             const payload = {
-                title: document.getElementById('editTicketTitle').value,
-                description: document.getElementById('editTicketDesc').value,
-                type: document.getElementById('editTicketType').value,
-                priority: document.getElementById('editTicketPrio').value
+                title: document.getElementById('panelTitle').value,
+                description: document.getElementById('panelDesc').value,
+                type: document.getElementById('panelType').value,
+                priority: document.getElementById('panelPrio').value
             };
 
             try {
-                const res = await fetch(`${API_URL}/${id}/update`, {
+                const res = await fetch(`${getApiBase()}/${selectedTicket.id}/update`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload)
                 });
-
                 if (res.ok) {
-                    closeEditModal();
+                    // Update local state
+                    Object.assign(selectedTicket, payload);
+                    document.getElementById('chatPanelTitle').textContent = `#${selectedTicket.id} ${payload.title}`;
                     loadTickets();
                 } else {
                     alert("Failed to update ticket");
                 }
             } catch (err) {
                 console.error("Update failed", err);
-                alert("Error updating ticket");
             }
+        }
+
+        async function loadChatMessages(ticketId) {
+            const container = document.getElementById('chatMessages');
+            try {
+                const res = await fetch(`${getApiBase()}/${ticketId}/comments`);
+                const comments = await res.json();
+
+                if (comments.length === 0) {
+                    container.innerHTML = '<div class="chat-empty">No conversation yet.</div>';
+                } else {
+                    container.innerHTML = '';
+                    comments.forEach(c => {
+                        const bubble = document.createElement('div');
+                        const isAi = c.author === 'ai';
+                        bubble.className = `chat-bubble ${isAi ? 'ai' : 'me'}`;
+                        const dateStr = new Date(c.created_at).toLocaleString();
+                        bubble.innerHTML = `
+                            <div class="bubble-author">${escapeHtml(c.author)}</div>
+                            <div>${escapeHtml(c.content)}</div>
+                            <div class="bubble-time">${dateStr}</div>
+                        `;
+                        container.appendChild(bubble);
+                    });
+                    // Auto-scroll to bottom
+                    container.scrollTop = container.scrollHeight;
+                }
+            } catch (err) {
+                console.error("Failed to load comments", err);
+                container.innerHTML = '<div class="chat-empty">Failed to load messages.</div>';
+            }
+        }
+
+        async function sendChatMessage() {
+            if (!selectedTicket) return;
+            const input = document.getElementById('chatInput');
+            const content = input.value.trim();
+            if (!content) return;
+
+            try {
+                const res = await fetch(`${getApiBase()}/${selectedTicket.id}/comments`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ content: content, author: 'me' })
+                });
+                if (res.ok) {
+                    input.value = '';
+                    await loadChatMessages(selectedTicket.id);
+                } else {
+                    alert("Failed to send message");
+                }
+            } catch (err) {
+                console.error("Send failed", err);
+            }
+        }
+
+        document.getElementById('chatInput').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') sendChatMessage();
         });
+
+        // =====================
+        // Create Ticket Modal
+        // =====================
+        const modal = document.getElementById('createModal');
+        const form = document.getElementById('createForm');
+
+        function openModal() {
+            modal.classList.add('active');
+            const currentSprint = document.getElementById('sprintFilter').value;
+            if (currentSprint !== 'ALL') {
+                document.getElementById('modalSprintInput').value = currentSprint;
+            }
+        }
 
         function closeModal() {
             modal.classList.remove('active');
@@ -963,7 +1355,7 @@
             if (e.target === modal) closeModal();
         });
 
-        // Sprint Combobox Logic
+        // Sprint Combobox
         const sprintInput = document.getElementById('modalSprintInput');
         const sprintDropdown = document.getElementById('sprintDropdown');
 
@@ -977,7 +1369,6 @@
             sprintDropdown.classList.add('show');
         });
 
-        // Close dropdown when clicking outside
         document.addEventListener('click', (e) => {
             if (!e.target.closest('.combobox-container')) {
                 sprintDropdown.classList.remove('show');
@@ -987,12 +1378,8 @@
         function updateSprintDropdown() {
             const query = sprintInput.value.toLowerCase();
             const sprints = getUniqueSprints();
-
             sprintDropdown.innerHTML = '';
-
-            // Filter options
             const matches = sprints.filter(s => s.toLowerCase().includes(query));
-
             matches.forEach(s => {
                 const div = document.createElement('div');
                 div.className = 'dropdown-item';
@@ -1000,8 +1387,6 @@
                 div.onclick = () => selectSprint(s);
                 sprintDropdown.appendChild(div);
             });
-
-            // "Create New" option
             if (query && !sprints.some(s => s.toLowerCase() === query)) {
                 const div = document.createElement('div');
                 div.className = 'dropdown-item create-option';
@@ -1017,14 +1402,11 @@
         }
 
         function getUniqueSprints() {
-            const sprints = new Set(['Backlog']); // Always include Backlog
-            allTickets.forEach(t => {
-                if (t.sprint) sprints.add(t.sprint);
-            });
+            const sprints = new Set(['Backlog']);
+            allTickets.forEach(t => { if (t.sprint) sprints.add(t.sprint); });
             return Array.from(sprints).sort();
         }
 
-        // Form Submit
         form.addEventListener('submit', async (e) => {
             e.preventDefault();
             const btn = document.getElementById('submitBtn');
@@ -1042,15 +1424,14 @@
             };
 
             try {
-                const res = await fetch(API_URL, {
+                const res = await fetch(getApiBase(), {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(data)
                 });
-
                 if (res.ok) {
                     closeModal();
-                    loadTickets(); // Refresh board and filters
+                    loadTickets();
                 } else {
                     alert("Failed to create ticket");
                 }
@@ -1063,10 +1444,11 @@
             }
         });
 
-        // Initial Load
+        // =====================
+        // Init
+        // =====================
         setupColumnDnD();
-        loadTickets();
-
+        route(); // Initial route
     </script>
 </body>
 

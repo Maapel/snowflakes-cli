@@ -23,3 +23,27 @@ def get_session():
     """Returns a new session for database operations."""
     engine = get_engine()
     return Session(engine)
+
+# --- Central Registry ---
+REGISTRY_DIR = os.path.join(os.path.expanduser("~"), ".snowflakes")
+REGISTRY_DB = os.path.join(REGISTRY_DIR, "registry.db")
+
+def get_registry_engine():
+    os.makedirs(REGISTRY_DIR, exist_ok=True)
+    return create_engine(f"sqlite:///{REGISTRY_DB}")
+
+def init_registry_db():
+    from models import Project
+    engine = get_registry_engine()
+    SQLModel.metadata.create_all(engine)
+
+def get_registry_session():
+    return Session(get_registry_engine())
+
+def get_project_engine(project_path: str):
+    """Engine for a specific project's snowflakes.db"""
+    db_path = os.path.join(project_path, DB_NAME)
+    return create_engine(f"sqlite:///{db_path}")
+
+def get_project_session(project_path: str):
+    return Session(get_project_engine(project_path))

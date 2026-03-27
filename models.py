@@ -24,3 +24,9 @@ class Comment(SQLModel, table=True):
     author: str = Field(default="me")
     content: str
     created_at: datetime = Field(default_factory=datetime.now)
+
+class Project(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    name: str
+    path: str = Field(unique=True)
+    last_accessed: datetime = Field(default_factory=datetime.now)

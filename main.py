@@ -10,8 +10,8 @@ from rich.panel import Panel
 from rich.prompt import Prompt, IntPrompt
 
 # Import our local modules
-from models import Ticket, Comment
-from database import init_db, get_session
+from models import Ticket, Comment, Project
+from database import init_db, get_session, init_registry_db, get_registry_session
 import sys
 import os
 import signal
@@ -19,8 +19,23 @@ import subprocess
 import webbrowser
 import time
 import shutil
+from datetime import datetime
 
 HOME_DIR = os.path.expanduser("~/.snowflakes")
+
+def register_current_project():
+    """Register the current project in the central registry."""
+    init_registry_db()
+    project_path = os.environ.get("SNOWFLAKES_ROOT", os.getcwd())
+    project_path = os.path.abspath(project_path)
+    with get_registry_session() as session:
+        existing = session.exec(select(Project).where(Project.path == project_path)).first()
+        if existing:
+            existing.last_accessed = datetime.now()
+            session.add(existing)
+        else:
+            session.add(Project(name=os.path.basename(project_path), path=project_path))
+        session.commit()
 PID_FILE = os.path.join(HOME_DIR, "server.pid")
 
 def get_pid():
@@ -156,6 +171,7 @@ to report blockers or provide technical notes during the task lifecycle."
         
     # Initialize DB in project folder (or current folder) on every run
     init_db()
+    register_current_project()
 
 @app.command()
 def new(
