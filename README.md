@@ -1,8 +1,8 @@
 # Snowflakes
 
-A local-first Project Management System bundled as a single binary. It combines a CLI, a Kanban board, and a JSON-protocol for AI agents into one tool.
+A local-first Project Management System bundled as a single binary. It combines a CLI, a Kanban board, a multi-project dashboard, and a JSON-protocol for AI agents into one tool.
 
-The data lives in a `snowflakes.db` SQLite file in your project root. No cloud, no login, no setup.
+The data lives in a `snowflakes.db` SQLite file in your project root. A central registry at `~/.snowflakes/registry.db` tracks all your projects for the dashboard view. No cloud, no login, no setup.
 
 ![Screenshot of snowflakes](snowflakes.png)
 
@@ -73,9 +73,9 @@ sw close-sprint "Sprint-1" --next-sprint "Sprint-2"
 
 ```
 
-### Web UI
+### Web UI & Dashboard
 
-Includes a local web interface for drag-and-drop management.
+Includes a local web interface with a multi-project dashboard and per-ticket chat panel.
 
 ```bash
 sw start
@@ -83,6 +83,22 @@ sw start
 sw stop
 # Stops the running UI
 ```
+
+The web UI has two views:
+
+- **Dashboard** (`#/`): Overview of all registered projects. Each project card shows ticket counts by status and active AI agent work (tickets assigned to `ai` that are TODO, IN_PROGRESS, or REVIEW). Click a card to open its board.
+- **Board** (`#/project/{id}`): Kanban board for a specific project with drag-and-drop. Click any ticket to open the slide-out chat panel.
+
+#### Chat Panel
+
+Clicking a ticket on the board opens a slide-out panel on the right with:
+
+- **Details**: Collapsible section to edit title, description, type, and priority.
+- **Chat**: A message thread for 2-way communication with AI agents. Messages from `me` appear on the right (blue), messages from `ai` appear on the left (purple). Type a message and press Enter or click Send.
+
+#### Project Registration
+
+Projects are automatically registered in the central registry (`~/.snowflakes/registry.db`) every time you run any `sw` command in a project directory. The dashboard aggregates data from all registered projects.
 
 ## AI Integration
 
@@ -147,8 +163,34 @@ sw groom-read
 | `start` | Start the Snowflakes Web UI. | |
 | `stop` | Stop the running Snowflakes Web UI. | |
 
+## API Endpoints
+
+The web UI communicates via a REST API. Legacy single-project endpoints are preserved for backward compatibility.
+
+### Project-Scoped Endpoints (New)
+
+| Endpoint | Method | Description |
+| :--- | :--- | :--- |
+| `/api/projects` | GET | List all registered projects with ticket stats and agent activity |
+| `/api/projects/{id}/tickets` | GET | List all tickets for a project |
+| `/api/projects/{id}/tickets` | POST | Create a ticket in a project |
+| `/api/projects/{id}/tickets/{tid}/move` | POST | Move a ticket's status |
+| `/api/projects/{id}/tickets/{tid}/update` | POST | Update a ticket's details |
+| `/api/projects/{id}/tickets/{tid}/comments` | GET | Get comments for a ticket |
+| `/api/projects/{id}/tickets/{tid}/comments` | POST | Post a comment to a ticket |
+
+### Legacy Endpoints
+
+| Endpoint | Method | Description |
+| :--- | :--- | :--- |
+| `/api/tickets` | GET/POST | List or create tickets in the current project |
+| `/api/tickets/{id}/move` | POST | Move a ticket |
+| `/api/tickets/{id}/update` | POST | Update a ticket |
+| `/api/tickets/{id}/comments` | GET/POST | Get or post comments |
+
 ## Configuration
 
 | Env Variable | Description | Default |
 | :--- | :--- | :--- |
-| `SNOWFLAKES_ROOT` | Path to the database file. | Current Working Directory |
+| `SNOWFLAKES_ROOT` | Path to the project database file. | Current Working Directory |
+| `SNOWFLAKES_STATIC_DIR` | Path to static files for the web UI. | `./static` |
