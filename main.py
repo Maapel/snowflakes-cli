@@ -145,24 +145,35 @@ Snowflakes is a local-first PM system. Data is in `snowflakes.db`.
 Use `sw --project <path>` if the DB is not in the current directory.
 
 [bold]2. Core Loop[/bold]
-1. [green]SCAN[/green]: `sw agent-read` -> Get assigned OPEN tickets + full conversation history.
-2. [yellow]SIGNAL[/yellow]: `sw move <ID> IN_PROGRESS` -> Let others know you are working.
-3. [magenta]COMMUNICATE[/magenta]: 
-   - If blocked: `sw comment <ID> "Missing API key for X" --author ai`
-   - If update needed: `sw comment <ID> "Refactored the auth logic" --author ai`
-4. [blue]RESOLVE[/blue]: `sw resolve <ID> --notes "Fixed in commit a1b2c3"` -> Close ticket.
+1. [green]SCAN[/green]: `sw agent-read` -> Get assigned OPEN tickets + conversation history.
+2. [green]SEARCH[/green]: `sw search "<query>"` -> Check if a ticket already exists.
+3. [yellow]CREATE[/yellow]: `sw quick "<title>"` -> Create + assign to AI + IN_PROGRESS in one step.
+4. [yellow]SIGNAL[/yellow]: `sw move <ID> IN_PROGRESS` -> Signal you are working.
+5. [magenta]COMMUNICATE[/magenta]: `sw comment <ID> "<text>" --author ai` -> Updates/blockers.
+6. [blue]RESOLVE[/blue]: `sw resolve <ID> --notes "Fixed via ..."` -> Close ticket.
 
-[bold]3. Commands for Agents[/bold]
+[bold]3. Agent-Optimized Commands[/bold]
+- `sw quick "<title>"`: Create ticket assigned to AI, auto IN_PROGRESS. Returns JSON.
+- `sw take <ID>`: Assign ticket to AI + move to IN_PROGRESS. Returns JSON.
+- `sw search "<query>"`: Search tickets by title/description. Returns JSON.
+- `sw status`: Summary of all open tickets grouped by status. Returns JSON.
+- `sw batch-new --json '[...]'`: Create multiple tickets from JSON array.
 - `sw agent-read`: JSON dump of AI-assigned tickets including all comments.
 - `sw comment <ID> <TEXT> --author ai`: Add to the ticket conversation.
-- `sw view <ID>`: See full ticket details and human-readable conversation.
-- `sw move <ID> <STATUS>`: Update status (TODO, IN_PROGRESS, REVIEW, DONE).
-- `sw groom-read`: Find backlog tasks needing description or estimation.
+- `sw resolve <ID> --notes "<text>"`: Close ticket with notes.
 
-[bold]4. System Prompt Hint[/bold]
-"You are a software engineer agent. Use `sw agent-read` to find your tasks. 
-Always signal progress with `sw move` and use `sw comment --author ai` 
-to report blockers or provide technical notes during the task lifecycle."
+[bold]4. Standard Commands[/bold]
+- `sw view <ID>`: Full ticket details and conversation (human-readable).
+- `sw move <ID> <STATUS>`: Update status (TODO, IN_PROGRESS, REVIEW, DONE).
+- `sw list --json`: All open tickets as JSON.
+- `sw new "<title>" --assign ai --no-interactive`: Create without prompts.
+- `sw groom-read`: Unestimated backlog tickets.
+
+[bold]5. System Prompt Hint[/bold]
+"You are a software engineer agent. Before starting any work, check
+`sw search` for existing tickets and `sw agent-read` for assigned tasks.
+Create tickets with `sw quick` for all work. Always use `sw comment
+--author ai` and `sw resolve` to track progress."
 """)
         raise typer.Exit()
 
@@ -182,10 +193,13 @@ def new(
     prio: Optional[str] = typer.Option(None, help="Priority: LOW, MEDIUM, HIGH"),
     points: Optional[int] = typer.Option(None, help="Story Points"),
     sprint: Optional[str] = typer.Option(None, help="Sprint name"),
-    interactive: bool = typer.Option(True, help="Enable interactive prompts if args missing")
+    interactive: bool = typer.Option(True, help="Enable interactive prompts if args missing"),
+    no_interactive: bool = typer.Option(False, "--no-interactive", help="Disable interactive prompts"),
 ):
     """Create a new ticket. Interactive by default if arguments are missing."""
-    
+    if no_interactive:
+        interactive = False
+
     # Interactive Mode
     if interactive and not title:
         rprint("[bold cyan]❄️  New Ticket Wizard[/bold cyan]")
@@ -475,6 +489,104 @@ def edit_ticket_logic(ticket_id: int, title=None, desc=None, type=None, prio=Non
         session.commit()
         session.refresh(ticket)
         return ticket
+
+@app.command("quick")
+def quick(
+    title: str = typer.Argument(..., help="Ticket title"),
+    desc: Optional[str] = typer.Option(None, help="Description"),
+    type: str = typer.Option("TASK", help="Type: STORY, TASK, BUG"),
+    prio: str = typer.Option("MEDIUM", help="Priority: LOW, MEDIUM, HIGH"),
+    points: int = typer.Option(0, help="Story points"),
+    sprint: str = typer.Option("Backlog", help="Sprint name"),
+):
+    """Create a ticket assigned to AI and immediately move to IN_PROGRESS. Designed for agents."""
+    ticket = create_ticket_logic(title, desc, type, "ai", prio, points, sprint)
+    move_ticket_logic(ticket.id, "IN_PROGRESS")
+    result = {"id": ticket.id, "title": ticket.title, "status": "IN_PROGRESS", "assignee": "ai"}
+    print(json.dumps(result))
+
+@app.command("take")
+def take(ticket_id: int):
+    """Assign a ticket to AI and move to IN_PROGRESS."""
+    with get_session() as session:
+        ticket = session.get(Ticket, ticket_id)
+        if not ticket:
+            rprint(f"[red]Ticket #{ticket_id} not found.[/red]")
+            raise typer.Exit(code=1)
+        ticket.assignee = "ai"
+        ticket.status = "IN_PROGRESS"
+        session.add(ticket)
+        session.commit()
+    result = {"id": ticket_id, "status": "IN_PROGRESS", "assignee": "ai"}
+    print(json.dumps(result))
+
+@app.command("search")
+def search(
+    query: str = typer.Argument(..., help="Search terms"),
+    include_done: bool = typer.Option(False, "--all", help="Include DONE tickets"),
+):
+    """Search tickets by title and description. Returns JSON."""
+    terms = query.lower().split()
+    with get_session() as session:
+        q = select(Ticket)
+        if not include_done:
+            q = q.where(Ticket.status != "DONE")
+        tickets = session.exec(q).all()
+
+    matches = []
+    for t in tickets:
+        text = f"{t.title} {t.description or ''}".lower()
+        if all(term in text for term in terms):
+            matches.append(t.model_dump(mode='json'))
+
+    print(json.dumps(matches, indent=2))
+
+@app.command("status")
+def status_summary():
+    """Quick JSON summary of all open tickets grouped by status."""
+    with get_session() as session:
+        tickets = session.exec(select(Ticket).where(Ticket.status != "DONE")).all()
+
+    grouped = {"TODO": [], "IN_PROGRESS": [], "REVIEW": []}
+    for t in tickets:
+        bucket = grouped.get(t.status, [])
+        bucket.append({"id": t.id, "title": t.title, "assignee": t.assignee, "type": t.type, "priority": t.priority})
+        grouped[t.status] = bucket
+
+    summary = {
+        "total_open": len(tickets),
+        "by_status": grouped
+    }
+    print(json.dumps(summary, indent=2))
+
+@app.command("batch-new")
+def batch_new(
+    data: str = typer.Option(..., "--json", help='JSON array: [{"title":"...","desc":"...","type":"TASK","prio":"MEDIUM","assign":"ai"}]'),
+):
+    """Create multiple tickets at once from a JSON array."""
+    try:
+        items = json.loads(data)
+    except json.JSONDecodeError as e:
+        rprint(f"[red]Invalid JSON: {e}[/red]")
+        raise typer.Exit(code=1)
+
+    created = []
+    for item in items:
+        title = item.get("title")
+        if not title:
+            continue
+        ticket = create_ticket_logic(
+            title,
+            item.get("desc") or item.get("description"),
+            item.get("type", "TASK"),
+            item.get("assign", item.get("assignee", "ai")),
+            item.get("prio", item.get("priority", "MEDIUM")),
+            item.get("points", 0),
+            item.get("sprint", "Backlog"),
+        )
+        created.append({"id": ticket.id, "title": ticket.title})
+
+    print(json.dumps({"created": len(created), "tickets": created}, indent=2))
 
 @app.command("groom-read")
 def groom_read():

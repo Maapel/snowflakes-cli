@@ -106,37 +106,54 @@ Snowflakes exposes project state as machine-readable JSON. This allows AI agents
 
 ### AI Agent Protocol
 
-To enable an AI agent to use Snowflakes, you can include the following instructions in its system prompt:
+To enable an AI agent to use Snowflakes, add `sw --agent-help` output to its system prompt, or use the instructions below.
 
 **Suggested System Prompt Snippet:**
-> You have access to a project management tool called Snowflakes. 
-> 1. Run `sw agent-read` to see your assigned tasks and their conversation history.
-> 2. Use `sw move <ID> IN_PROGRESS` when starting a task.
-> 3. Use `sw comment <ID> <TEXT> --author ai` to ask questions, report blockers, or provide updates.
-> 4. Use `sw resolve <ID> --notes <TEXT>` when finished.
-> 5. If you need more context on a ticket, use `sw view <ID>`.
+> You have access to a project management tool called Snowflakes (`sw`).
+> Every piece of work you do must be tracked as a ticket.
+> 1. Run `sw search "<keywords>"` to check if a ticket already exists.
+> 2. Run `sw agent-read` to see your assigned tasks and their conversation history.
+> 3. Use `sw quick "<title>"` to create a ticket and start working (assigns to AI, moves to IN_PROGRESS).
+> 4. Use `sw comment <ID> "<text>" --author ai` to report progress or blockers.
+> 5. Use `sw resolve <ID> --notes "<text>"` when finished.
 
-#### 1. Reading State (`agent-read`)
-Agents should run this to find assigned work. It returns `OPEN` tickets assigned to `ai`, including the **full conversation history** (comments).
+#### Agent-Optimized Commands
+
+These commands are designed for machine consumption — they return JSON and minimize the number of steps needed.
 
 ```bash
-sw agent-read
+# Create + assign + start in one step (returns JSON with ticket ID)
+sw quick "Fix auth middleware" --desc "JWT validation failing on refresh tokens"
+
+# Take an existing unassigned ticket (assigns to AI + IN_PROGRESS)
+sw take 5
+
+# Search for existing tickets before creating duplicates
+sw search "auth middleware"
+
+# Get a quick overview of all open work
+sw status
+
+# Create multiple tickets at once
+sw batch-new --json '[{"title":"Add tests","desc":"Unit tests for auth"},{"title":"Update docs"}]'
 ```
 
-#### 2. Communication & Collaboration
-Each ticket has a separate conversation thread. Agents should use this to:
+#### Standard Agent Workflow
+
+1. `sw search "<query>"` → Check if a ticket already exists for the work.
+2. `sw quick "<title>"` or `sw take <ID>` → Start working.
+3. `sw comment <ID> "<text>" --author ai` → Report progress, blockers, or updates.
+4. `sw resolve <ID> --notes "Fixed via commit abc123"` → Close the ticket.
+
+#### Communication & Collaboration
+
+Each ticket has a conversation thread. Agents should use this to:
 - **Report Blockers:** `sw comment 5 "Missing API documentation for the billing module" --author ai`
 - **Provide Updates:** `sw comment 5 "Finished the database migration script" --author ai`
 - **Reply to Users:** When a user adds a comment, the agent will see it in the next `agent-read` call and can respond.
 
-#### 3. Execution Workflow
-1. `sw agent-read` -> Agent parses JSON tasks + comments.
-2. `sw move <ID> IN_PROGRESS` -> Agent signals start.
-3. [Agent writes code]
-4. `sw comment <ID> "Implemented X, but found a bug in Y" --author ai` -> Optional update.
-5. `sw resolve <ID> --notes "Fixed via PR #12"` -> Agent closes ticket.
+#### Grooming Backlog (`groom-read`)
 
-#### 4. Grooming Backlog (`groom-read`)
 Agents can run this to find tasks that need estimation or details (0 points or missing description).
 
 ```bash
@@ -145,9 +162,22 @@ sw groom-read
 
 ## Command Reference
 
+### Agent-Optimized Commands
+
+| Command | Description | Output |
+| :--- | :--- | :--- |
+| `quick "<title>"` | Create ticket assigned to AI, auto IN_PROGRESS | JSON |
+| `take <ID>` | Assign ticket to AI + move to IN_PROGRESS | JSON |
+| `search "<query>"` | Search tickets by title/description | JSON |
+| `status` | Open tickets grouped by status | JSON |
+| `batch-new --json '[...]'` | Create multiple tickets at once | JSON |
+| `agent-read` | AI-assigned OPEN tickets with comments | JSON |
+
+### Standard Commands
+
 | Command | Description | Options |
 | :--- | :--- | :--- |
-| `new` | Create a new ticket. Interactive by default. | `--type`, `--prio`, `--assign`, `--desc` |
+| `new` | Create a new ticket. Interactive by default. | `--type`, `--prio`, `--assign`, `--desc`, `--no-interactive` |
 | `edit` | Edit an existing ticket. | `--title`, `--desc`, `--type`, `--prio` |
 | `list` | List open tickets. | `--all`, `--sprint`, `--assignee`, `--json` |
 | `board` | View the Kanban Board. | `--sprint` |
@@ -157,7 +187,6 @@ sw groom-read
 | `sprint` | Bulk assign tickets to a sprint. | `NAME ID...` |
 | `move` | Move a ticket to a new status. | `ID STATUS` |
 | `groom-read` | JSON output of unestimated backlog tickets. | |
-| `agent-read` | JSON output of AI-assigned OPEN tickets (with comments). | |
 | `view` | View ticket details and full conversation. | `ID` |
 | `comment` | Add a comment to a ticket conversation. | `ID TEXT`, `--author` |
 | `start` | Start the Snowflakes Web UI. | |
