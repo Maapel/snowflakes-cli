@@ -745,6 +745,78 @@
             color: #64748b;
             margin-left: 0.5rem;
         }
+
+        /* Team Section */
+        .team-section {
+            margin-top: 2.5rem;
+            padding-top: 1.5rem;
+            border-top: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .team-section-title {
+            font-size: 1rem;
+            font-weight: 600;
+            color: #94a3b8;
+            margin-bottom: 1rem;
+        }
+
+        .team-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .team-chip {
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 2rem;
+            padding: 0.4rem 0.75rem;
+            font-size: 0.85rem;
+        }
+
+        .team-chip .chip-avatar {
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #6366f1, #a855f7);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.55rem;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+
+        .team-chip.builtin { opacity: 0.7; }
+
+        .team-chip .chip-remove {
+            background: none;
+            border: none;
+            color: #64748b;
+            cursor: pointer;
+            font-size: 1rem;
+            padding: 0;
+            margin-left: 0.2rem;
+            line-height: 1;
+        }
+
+        .team-chip .chip-remove:hover { color: var(--accent); }
+
+        .team-add {
+            display: flex;
+            gap: 0.5rem;
+            max-width: 350px;
+        }
+
+        .team-add input {
+            flex: 1;
+            padding: 0.5rem 0.75rem;
+            font-size: 0.85rem;
+        }
     </style>
 </head>
 
@@ -774,6 +846,18 @@
     <div id="dashboardView" style="display:none">
         <div class="dashboard-grid" id="dashboardGrid">
             <!-- Project cards rendered here -->
+        </div>
+
+        <!-- Team / Assignee Management -->
+        <div class="team-section">
+            <h3 class="team-section-title">Team Members</h3>
+            <div class="team-list" id="teamList">
+                <!-- Rendered dynamically -->
+            </div>
+            <div class="team-add">
+                <input type="text" id="newMemberInput" placeholder="Add team member..." autocomplete="off">
+                <button class="btn-primary" onclick="addTeamMember()" style="padding:0.5rem 1rem;font-size:0.85rem;">Add</button>
+            </div>
         </div>
     </div>
 
@@ -837,7 +921,10 @@
                 <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.75rem;">
                     <div class="detail-row">
                         <label>Assignee</label>
-                        <input type="text" id="panelAssignee">
+                        <div class="combobox-container">
+                            <input type="text" id="panelAssignee" autocomplete="off">
+                            <div class="dropdown-menu" id="panelAssigneeDropdown"></div>
+                        </div>
                     </div>
                     <div class="detail-row">
                         <label>Points</label>
@@ -957,6 +1044,7 @@
             document.getElementById('projectHeaderInfo').textContent = '';
             closeChatPanel();
             loadProjects();
+            renderTeamList();
         }
 
         function showBoardView() {
@@ -1448,33 +1536,6 @@
             assigneeDropdown.classList.add('show');
         });
 
-        function updateAssigneeDropdown() {
-            const query = assigneeInput.value.toLowerCase();
-            const users = getUniqueUsers();
-            assigneeDropdown.innerHTML = '';
-            const matches = users.filter(u => u.toLowerCase().includes(query));
-            matches.forEach(u => {
-                const div = document.createElement('div');
-                div.className = 'dropdown-item';
-                div.textContent = u;
-                div.onclick = () => { assigneeInput.value = u; assigneeDropdown.classList.remove('show'); };
-                assigneeDropdown.appendChild(div);
-            });
-            if (query && !users.some(u => u.toLowerCase() === query)) {
-                const div = document.createElement('div');
-                div.className = 'dropdown-item create-option';
-                div.textContent = `+ Add "${assigneeInput.value}"`;
-                div.onclick = () => { assigneeDropdown.classList.remove('show'); };
-                assigneeDropdown.appendChild(div);
-            }
-        }
-
-        function getUniqueUsers() {
-            const users = new Set(['me', 'ai']);
-            allTickets.forEach(t => { if (t.assignee) users.add(t.assignee); });
-            return Array.from(users).sort();
-        }
-
         form.addEventListener('submit', async (e) => {
             e.preventDefault();
             const btn = document.getElementById('submitBtn');
@@ -1513,6 +1574,138 @@
                 btn.disabled = false;
             }
         });
+
+        // =====================
+        // Team / Assignee Management
+        // =====================
+        const BUILTIN_MEMBERS = ['me', 'ai'];
+
+        function getTeamMembers() {
+            const stored = localStorage.getItem('snowflakes_team');
+            const custom = stored ? JSON.parse(stored) : [];
+            return [...BUILTIN_MEMBERS, ...custom];
+        }
+
+        function getCustomMembers() {
+            const stored = localStorage.getItem('snowflakes_team');
+            return stored ? JSON.parse(stored) : [];
+        }
+
+        function saveCustomMembers(members) {
+            localStorage.setItem('snowflakes_team', JSON.stringify(members));
+        }
+
+        function addTeamMember() {
+            const input = document.getElementById('newMemberInput');
+            const name = input.value.trim().toLowerCase();
+            if (!name) return;
+            if (getTeamMembers().includes(name)) {
+                input.value = '';
+                return;
+            }
+            const custom = getCustomMembers();
+            custom.push(name);
+            saveCustomMembers(custom);
+            input.value = '';
+            renderTeamList();
+        }
+
+        document.getElementById('newMemberInput').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') { e.preventDefault(); addTeamMember(); }
+        });
+
+        function removeTeamMember(name) {
+            const custom = getCustomMembers().filter(m => m !== name);
+            saveCustomMembers(custom);
+            renderTeamList();
+        }
+
+        function renderTeamList() {
+            const list = document.getElementById('teamList');
+            list.innerHTML = '';
+            const all = getTeamMembers();
+            // Also collect assignees seen in any loaded project data
+            all.forEach(name => {
+                const chip = document.createElement('div');
+                const isBuiltin = BUILTIN_MEMBERS.includes(name);
+                chip.className = `team-chip${isBuiltin ? ' builtin' : ''}`;
+                chip.innerHTML = `
+                    <span class="chip-avatar">${escapeHtml(name.substring(0, 2))}</span>
+                    <span>${escapeHtml(name)}</span>
+                    ${isBuiltin ? '' : '<button class="chip-remove" onclick="removeTeamMember(\'' + escapeHtml(name) + '\')">&times;</button>'}
+                `;
+                list.appendChild(chip);
+            });
+        }
+
+        // Collect all known assignees (team + tickets)
+        function getAllAssignees() {
+            const members = new Set(getTeamMembers());
+            allTickets.forEach(t => { if (t.assignee) members.add(t.assignee); });
+            return Array.from(members).sort((a, b) => {
+                // me and ai first
+                if (a === 'me') return -1; if (b === 'me') return 1;
+                if (a === 'ai') return -1; if (b === 'ai') return 1;
+                return a.localeCompare(b);
+            });
+        }
+
+        // Panel assignee combobox
+        const panelAssigneeInput = document.getElementById('panelAssignee');
+        const panelAssigneeDropdown = document.getElementById('panelAssigneeDropdown');
+
+        panelAssigneeInput.addEventListener('focus', () => {
+            updatePanelAssigneeDropdown();
+            panelAssigneeDropdown.classList.add('show');
+        });
+
+        panelAssigneeInput.addEventListener('input', () => {
+            updatePanelAssigneeDropdown();
+            panelAssigneeDropdown.classList.add('show');
+        });
+
+        function updatePanelAssigneeDropdown() {
+            const query = panelAssigneeInput.value.toLowerCase();
+            const users = getAllAssignees();
+            panelAssigneeDropdown.innerHTML = '';
+            const matches = users.filter(u => u.toLowerCase().includes(query));
+            matches.forEach(u => {
+                const div = document.createElement('div');
+                div.className = 'dropdown-item';
+                div.textContent = u;
+                div.onclick = () => { panelAssigneeInput.value = u; panelAssigneeDropdown.classList.remove('show'); };
+                panelAssigneeDropdown.appendChild(div);
+            });
+            if (query && !users.some(u => u.toLowerCase() === query)) {
+                const div = document.createElement('div');
+                div.className = 'dropdown-item create-option';
+                div.textContent = `+ Add "${panelAssigneeInput.value}"`;
+                div.onclick = () => { panelAssigneeDropdown.classList.remove('show'); };
+                panelAssigneeDropdown.appendChild(div);
+            }
+        }
+
+        // Also update the create modal assignee dropdown to use getAllAssignees
+        function updateAssigneeDropdown() {
+            const query = assigneeInput.value.toLowerCase();
+            const users = getAllAssignees();
+            assigneeDropdown.innerHTML = '';
+            const matches = users.filter(u => u.toLowerCase().includes(query));
+            matches.forEach(u => {
+                const div = document.createElement('div');
+                div.className = 'dropdown-item';
+                div.textContent = u;
+                div.onclick = () => { assigneeInput.value = u; assigneeDropdown.classList.remove('show'); };
+                assigneeDropdown.appendChild(div);
+            });
+            if (query && !users.some(u => u.toLowerCase() === query)) {
+                const div = document.createElement('div');
+                div.className = 'dropdown-item create-option';
+                div.textContent = `+ Add "${assigneeInput.value}"`;
+                div.onclick = () => { assigneeDropdown.classList.remove('show'); };
+                assigneeDropdown.appendChild(div);
+            }
+        }
 
         // =====================
         // Init
