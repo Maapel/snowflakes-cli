@@ -47,6 +47,8 @@ class TicketUpdate(BaseModel):
     description: Optional[str] = None
     type: Optional[str] = None
     priority: Optional[str] = None
+    assignee: Optional[str] = None
+    points: Optional[int] = None
 
 class TicketMove(BaseModel):
     status: str
@@ -84,7 +86,7 @@ async def move_ticket(ticket_id: int, move: TicketMove):
 @app.post("/api/tickets/{ticket_id}/update")
 async def update_ticket(ticket_id: int, update: TicketUpdate):
     try:
-        edit_ticket_logic(ticket_id, update.title, update.description, update.type, update.priority)
+        edit_ticket_logic(ticket_id, update.title, update.description, update.type, update.priority, update.assignee, update.points)
         return {"status": "success"}
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
@@ -191,7 +193,7 @@ async def move_project_ticket(project_id: int, ticket_id: int, move: TicketMove)
 async def update_project_ticket(project_id: int, ticket_id: int, update: TicketUpdate):
     with project_context(project_id):
         try:
-            edit_ticket_logic(ticket_id, update.title, update.description, update.type, update.priority)
+            edit_ticket_logic(ticket_id, update.title, update.description, update.type, update.priority, update.assignee, update.points)
             return {"status": "success"}
         except ValueError as e:
             raise HTTPException(status_code=404, detail=str(e))

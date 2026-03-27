@@ -474,17 +474,19 @@ def edit(
         rprint(f"[red]{e}[/red]")
         raise typer.Exit(code=1)
 
-def edit_ticket_logic(ticket_id: int, title=None, desc=None, type=None, prio=None):
+def edit_ticket_logic(ticket_id: int, title=None, desc=None, type=None, prio=None, assignee=None, points=None):
     with get_session() as session:
         ticket = session.get(Ticket, ticket_id)
         if not ticket:
             raise ValueError(f"Ticket #{ticket_id} not found")
-        
+
         if title: ticket.title = title
         if desc: ticket.description = desc
         if type: ticket.type = type.upper()
         if prio: ticket.priority = prio.upper()
-        
+        if assignee is not None: ticket.assignee = assignee.lower()
+        if points is not None: ticket.points = points
+
         session.add(ticket)
         session.commit()
         session.refresh(ticket)
