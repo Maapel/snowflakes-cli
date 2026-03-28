@@ -382,18 +382,26 @@ def close_sprint(
 
 @app.command()
 def resolve(ticket_id: int, notes: str = typer.Option(..., "--notes", "-n", help="How was this fixed?")):
-    """Mark a ticket as DONE with resolution notes."""
+    """Mark a ticket as DONE with resolution notes. Auto-adds a comment with the resolution."""
     with get_session() as session:
         ticket = session.get(Ticket, ticket_id)
         if not ticket:
             rprint(f"[red]Ticket #{ticket_id} not found.[/red]")
             raise typer.Exit(code=1)
-        
+
         ticket.status = "DONE"
         ticket.resolution_notes = notes
         session.add(ticket)
+
+        # Auto-add resolution as a comment
+        comment = Comment(
+            ticket_id=ticket_id,
+            content=f"Resolved: {notes}",
+            author=ticket.assignee or "me"
+        )
+        session.add(comment)
         session.commit()
-    
+
     rprint(f"[green]✓ Resolved Ticket #{ticket_id}[/green]")
 
 @app.command()
@@ -607,18 +615,32 @@ def groom_read():
 
 @app.command("agent-read")
 def agent_read():
-    """Output OPEN tickets assigned to AI as JSON (Machine Readable). Includes conversation history."""
+    """Output OPEN tickets assigned to AI as JSON. Includes conversation history and unreplied user messages."""
     with get_session() as session:
         statement = select(Ticket).where(Ticket.assignee == "ai").where(Ticket.status != "DONE")
         tickets = session.exec(statement).all()
-        
+
     data = []
     for t in tickets:
         ticket_data = t.model_dump(mode='json')
         comments = list_comments_logic(t.id)
-        ticket_data["comments"] = [c.model_dump(mode='json') for c in comments]
+        comment_list = [c.model_dump(mode='json') for c in comments]
+        ticket_data["comments"] = comment_list
+
+        # Find unreplied user messages (messages after the last AI comment)
+        unreplied = []
+        last_ai_idx = -1
+        for i, c in enumerate(comment_list):
+            if c["author"] == "ai":
+                last_ai_idx = i
+        for c in comment_list[last_ai_idx + 1:]:
+            if c["author"] != "ai":
+                unreplied.append(c)
+
+        ticket_data["has_unreplied"] = len(unreplied) > 0
+        ticket_data["unreplied_messages"] = unreplied
         data.append(ticket_data)
-        
+
     print(json.dumps(data, indent=2))
 
 @app.command("internal-server", hidden=True)

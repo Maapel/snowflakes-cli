@@ -269,9 +269,33 @@
 
         .board {
             display: grid;
-            grid-template-columns: repeat(4, 300px);
+            grid-template-columns: repeat(4, minmax(250px, 1fr));
             gap: 1.5rem;
             height: calc(100vh - 120px);
+        }
+
+        @media (max-width: 1100px) {
+            .board {
+                grid-template-columns: repeat(2, 1fr);
+                height: auto;
+            }
+        }
+
+        @media (max-width: 600px) {
+            .board {
+                grid-template-columns: 1fr;
+            }
+            header {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            .chat-panel {
+                width: 100%;
+                right: -100%;
+            }
+            .board-wrapper.panel-open {
+                margin-right: 0;
+            }
         }
 
         .column {
@@ -281,10 +305,11 @@
             padding: 1rem;
             display: flex;
             flex-direction: column;
-            gap: 1rem;
+            gap: 0.75rem;
             backdrop-filter: blur(5px);
             min-height: 200px;
-            transition: background 0.3s;
+            transition: all 0.3s;
+            overflow-y: auto;
         }
 
         .column.drag-over {
@@ -292,23 +317,42 @@
             border-color: var(--primary);
         }
 
+        /* Color-coded column tops */
+        .column[data-status="TODO"] { border-top: 3px solid var(--primary); }
+        .column[data-status="IN_PROGRESS"] { border-top: 3px solid #facc15; }
+        .column[data-status="REVIEW"] { border-top: 3px solid var(--secondary); }
+        .column[data-status="DONE"] { border-top: 3px solid var(--success); }
+
         .column-header {
-            font-size: 0.9rem;
+            font-size: 0.85rem;
             text-transform: uppercase;
-            letter-spacing: 0.05em;
+            letter-spacing: 0.08em;
             color: #94a3b8;
             font-weight: 600;
             padding-bottom: 0.5rem;
             border-bottom: 1px solid rgba(255, 255, 255, 0.05);
             display: flex;
             justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 1;
         }
 
         .column-count {
             background: rgba(255, 255, 255, 0.1);
-            padding: 0.1rem 0.5rem;
+            padding: 0.15rem 0.6rem;
             border-radius: 1rem;
-            font-size: 0.8rem;
+            font-size: 0.75rem;
+            font-weight: 700;
+        }
+
+        .column-empty {
+            color: #475569;
+            font-size: 0.85rem;
+            text-align: center;
+            padding: 2rem 1rem;
+            font-style: italic;
         }
 
         .ticket {
@@ -325,14 +369,24 @@
         }
 
         .ticket:hover {
-            transform: translateY(-3px) scale(1.02);
+            transform: translateY(-2px);
             border-color: rgba(255, 255, 255, 0.2);
-            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.2);
+            box-shadow: 0 8px 16px -4px rgba(0, 0, 0, 0.25);
         }
 
         .ticket:active { cursor: grabbing; }
-        .ticket.dragging { opacity: 0.5; transform: scale(0.95); }
+        .ticket.dragging { opacity: 0.4; transform: scale(0.95); }
         .ticket.selected { border-color: var(--primary); box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.3); }
+
+        .ticket .priority-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+        .priority-HIGH { background: #ef4444; box-shadow: 0 0 6px rgba(239, 68, 68, 0.5); }
+        .priority-MEDIUM { background: #f59e0b; }
+        .priority-LOW { background: #6b7280; }
 
         .ticket::before {
             content: '';
@@ -746,6 +800,34 @@
             margin-left: 0.5rem;
         }
 
+        /* Custom scrollbar */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
+
+        /* Ticket summary bar */
+        .board-summary {
+            display: flex;
+            gap: 1.5rem;
+            margin-bottom: 1rem;
+            font-size: 0.85rem;
+            color: #94a3b8;
+        }
+
+        .board-summary span {
+            display: flex;
+            align-items: center;
+            gap: 0.3rem;
+        }
+
+        .summary-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+
         /* Team Section */
         .team-section {
             margin-top: 2.5rem;
@@ -776,7 +858,14 @@
             border-radius: 2rem;
             padding: 0.4rem 0.75rem;
             font-size: 0.85rem;
+            cursor: grab;
+            transition: all 0.15s;
+            user-select: none;
         }
+
+        .team-chip:active { cursor: grabbing; }
+        .team-chip.dragging-chip { opacity: 0.4; }
+        .team-chip.drag-over-chip { border-color: var(--primary); transform: scale(1.05); }
 
         .team-chip .chip-avatar {
             width: 22px;
@@ -805,6 +894,13 @@
         }
 
         .team-chip .chip-remove:hover { color: var(--accent); }
+
+        .team-hint {
+            font-size: 0.75rem;
+            color: #475569;
+            margin-top: 0.5rem;
+            font-style: italic;
+        }
 
         .team-add {
             display: flex;
@@ -854,6 +950,7 @@
             <div class="team-list" id="teamList">
                 <!-- Rendered dynamically -->
             </div>
+            <div class="team-hint">Drag to reorder. Order sets the default in assignee dropdowns.</div>
             <div class="team-add">
                 <input type="text" id="newMemberInput" placeholder="Add team member..." autocomplete="off">
                 <button class="btn-primary" onclick="addTeamMember()" style="padding:0.5rem 1rem;font-size:0.85rem;">Add</button>
@@ -863,6 +960,7 @@
 
     <!-- ========== Board View ========== -->
     <div id="boardView" style="display:none">
+        <div class="board-summary" id="boardSummary"></div>
         <div class="board-wrapper" id="boardWrapper">
             <div class="board">
                 <div class="column" id="col-TODO" data-status="TODO">
@@ -1212,6 +1310,29 @@
                 }
             });
 
+            // Update summary bar
+            const counts = {TODO: 0, IN_PROGRESS: 0, REVIEW: 0, DONE: 0};
+            tickets.forEach(t => { if (counts.hasOwnProperty(t.status)) counts[t.status]++; });
+            document.getElementById('boardSummary').innerHTML = `
+                <span><span class="summary-dot" style="background:var(--primary)"></span> ${counts.TODO} Todo</span>
+                <span><span class="summary-dot" style="background:#facc15"></span> ${counts.IN_PROGRESS} In Progress</span>
+                <span><span class="summary-dot" style="background:var(--secondary)"></span> ${counts.REVIEW} Review</span>
+                <span><span class="summary-dot" style="background:var(--success)"></span> ${counts.DONE} Done</span>
+                <span style="margin-left:auto;color:#64748b;">${tickets.length} total</span>
+            `;
+
+            // Add empty state to columns with no tickets
+            ['TODO', 'IN_PROGRESS', 'REVIEW', 'DONE'].forEach(status => {
+                const col = document.getElementById(`col-${status}`);
+                const count = parseInt(col.querySelector('.column-count').textContent);
+                if (count === 0) {
+                    const empty = document.createElement('div');
+                    empty.className = 'column-empty';
+                    empty.textContent = status === 'DONE' ? 'Nothing completed yet' : 'Drop tickets here';
+                    col.appendChild(empty);
+                }
+            });
+
             bindTicketEvents();
         }
 
@@ -1229,11 +1350,11 @@
             };
             div.innerHTML = `
                 <div class="ticket-header">
-                    <span>#${t.id} ${escapeHtml(t.sprint)}</span>
+                    <span><span class="priority-dot priority-${t.priority}"></span> #${t.id}</span>
                     <span>${getIcon(t.type)}</span>
                 </div>
                 <div class="ticket-title">${escapeHtml(t.title)}</div>
-                <div style="font-size:0.8rem;opacity:0.7;margin-bottom:0.5rem;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;">${escapeHtml(t.description || '')}</div>
+                ${t.description ? '<div style="font-size:0.8rem;opacity:0.6;margin-bottom:0.5rem;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;">' + escapeHtml(t.description) + '</div>' : ''}
                 <div class="ticket-meta">
                     <span class="badge">${t.points} pts</span>
                     <div class="avatar" title="${escapeHtml(t.assignee)}">${escapeHtml((t.assignee || '').substring(0, 2))}</div>
@@ -1395,14 +1516,29 @@
                 const res = await fetch(`${getApiBase()}/${ticketId}/comments`);
                 const comments = await res.json();
 
-                if (comments.length === 0) {
-                    container.innerHTML = '<div class="chat-empty">No conversation yet.</div>';
+                container.innerHTML = '';
+
+                // Show resolution banner if ticket is DONE
+                if (selectedTicket && selectedTicket.status === 'DONE' && selectedTicket.resolution_notes) {
+                    const banner = document.createElement('div');
+                    banner.style.cssText = 'background:rgba(74,222,128,0.1);border:1px solid rgba(74,222,128,0.25);border-radius:0.75rem;padding:0.75rem 1rem;margin-bottom:0.5rem;font-size:0.85rem;';
+                    banner.innerHTML = `<div style="color:var(--success);font-weight:600;margin-bottom:0.25rem;">Resolved</div><div style="color:#cbd5e1;">${escapeHtml(selectedTicket.resolution_notes)}</div>`;
+                    container.appendChild(banner);
+                }
+
+                if (comments.length === 0 && !(selectedTicket && selectedTicket.status === 'DONE')) {
+                    container.innerHTML += '<div class="chat-empty">No conversation yet.</div>';
                 } else {
-                    container.innerHTML = '';
                     comments.forEach(c => {
                         const bubble = document.createElement('div');
                         const isAi = c.author === 'ai';
-                        bubble.className = `chat-bubble ${isAi ? 'ai' : 'me'}`;
+                        const isResolution = c.content.startsWith('Resolved: ');
+                        if (isResolution) {
+                            bubble.className = 'chat-bubble';
+                            bubble.style.cssText = 'align-self:center;background:rgba(74,222,128,0.1);border:1px solid rgba(74,222,128,0.2);max-width:95%;text-align:center;';
+                        } else {
+                            bubble.className = `chat-bubble ${isAi ? 'ai' : 'me'}`;
+                        }
                         const dateStr = new Date(c.created_at).toLocaleString();
                         bubble.innerHTML = `
                             <div class="bubble-author">${escapeHtml(c.author)}</div>
@@ -1411,7 +1547,6 @@
                         `;
                         container.appendChild(bubble);
                     });
-                    // Auto-scroll to bottom
                     container.scrollTop = container.scrollHeight;
                 }
             } catch (err) {
@@ -1580,32 +1715,30 @@
         // =====================
         const BUILTIN_MEMBERS = ['me', 'ai'];
 
+        function getTeamOrder() {
+            const stored = localStorage.getItem('snowflakes_team_order');
+            return stored ? JSON.parse(stored) : [...BUILTIN_MEMBERS];
+        }
+
+        function saveTeamOrder(order) {
+            localStorage.setItem('snowflakes_team_order', JSON.stringify(order));
+        }
+
         function getTeamMembers() {
-            const stored = localStorage.getItem('snowflakes_team');
-            const custom = stored ? JSON.parse(stored) : [];
-            return [...BUILTIN_MEMBERS, ...custom];
-        }
-
-        function getCustomMembers() {
-            const stored = localStorage.getItem('snowflakes_team');
-            return stored ? JSON.parse(stored) : [];
-        }
-
-        function saveCustomMembers(members) {
-            localStorage.setItem('snowflakes_team', JSON.stringify(members));
+            const order = getTeamOrder();
+            // Ensure builtins are present
+            BUILTIN_MEMBERS.forEach(b => { if (!order.includes(b)) order.unshift(b); });
+            return order;
         }
 
         function addTeamMember() {
             const input = document.getElementById('newMemberInput');
             const name = input.value.trim().toLowerCase();
             if (!name) return;
-            if (getTeamMembers().includes(name)) {
-                input.value = '';
-                return;
-            }
-            const custom = getCustomMembers();
-            custom.push(name);
-            saveCustomMembers(custom);
+            const order = getTeamMembers();
+            if (order.includes(name)) { input.value = ''; return; }
+            order.push(name);
+            saveTeamOrder(order);
             input.value = '';
             renderTeamList();
         }
@@ -1615,39 +1748,69 @@
         });
 
         function removeTeamMember(name) {
-            const custom = getCustomMembers().filter(m => m !== name);
-            saveCustomMembers(custom);
+            if (BUILTIN_MEMBERS.includes(name)) return;
+            const order = getTeamMembers().filter(m => m !== name);
+            saveTeamOrder(order);
             renderTeamList();
         }
+
+        let teamDragSrc = null;
 
         function renderTeamList() {
             const list = document.getElementById('teamList');
             list.innerHTML = '';
             const all = getTeamMembers();
-            // Also collect assignees seen in any loaded project data
-            all.forEach(name => {
+            all.forEach((name, idx) => {
                 const chip = document.createElement('div');
                 const isBuiltin = BUILTIN_MEMBERS.includes(name);
                 chip.className = `team-chip${isBuiltin ? ' builtin' : ''}`;
+                chip.draggable = true;
+                chip.dataset.idx = idx;
+                chip.dataset.name = name;
                 chip.innerHTML = `
                     <span class="chip-avatar">${escapeHtml(name.substring(0, 2))}</span>
                     <span>${escapeHtml(name)}</span>
-                    ${isBuiltin ? '' : '<button class="chip-remove" onclick="removeTeamMember(\'' + escapeHtml(name) + '\')">&times;</button>'}
+                    ${isBuiltin ? '' : '<button class="chip-remove" onclick="event.stopPropagation();removeTeamMember(\'' + escapeHtml(name) + '\')">&times;</button>'}
                 `;
+                chip.addEventListener('dragstart', (e) => {
+                    teamDragSrc = idx;
+                    chip.classList.add('dragging-chip');
+                    e.dataTransfer.effectAllowed = 'move';
+                });
+                chip.addEventListener('dragend', () => {
+                    chip.classList.remove('dragging-chip');
+                    list.querySelectorAll('.team-chip').forEach(c => c.classList.remove('drag-over-chip'));
+                });
+                chip.addEventListener('dragover', (e) => {
+                    e.preventDefault();
+                    chip.classList.add('drag-over-chip');
+                });
+                chip.addEventListener('dragleave', () => chip.classList.remove('drag-over-chip'));
+                chip.addEventListener('drop', (e) => {
+                    e.preventDefault();
+                    chip.classList.remove('drag-over-chip');
+                    const targetIdx = parseInt(chip.dataset.idx);
+                    if (teamDragSrc !== null && teamDragSrc !== targetIdx) {
+                        const order = getTeamMembers();
+                        const [moved] = order.splice(teamDragSrc, 1);
+                        order.splice(targetIdx, 0, moved);
+                        saveTeamOrder(order);
+                        renderTeamList();
+                    }
+                    teamDragSrc = null;
+                });
                 list.appendChild(chip);
             });
         }
 
-        // Collect all known assignees (team + tickets)
+        // Collect all known assignees — respects team order, appends extras from tickets
         function getAllAssignees() {
-            const members = new Set(getTeamMembers());
-            allTickets.forEach(t => { if (t.assignee) members.add(t.assignee); });
-            return Array.from(members).sort((a, b) => {
-                // me and ai first
-                if (a === 'me') return -1; if (b === 'me') return 1;
-                if (a === 'ai') return -1; if (b === 'ai') return 1;
-                return a.localeCompare(b);
+            const ordered = getTeamMembers();
+            const extra = [];
+            allTickets.forEach(t => {
+                if (t.assignee && !ordered.includes(t.assignee)) extra.push(t.assignee);
             });
+            return [...ordered, ...new Set(extra)];
         }
 
         // Panel assignee combobox
@@ -1706,6 +1869,84 @@
                 assigneeDropdown.appendChild(div);
             }
         }
+
+        // =====================
+        // Keyboard Shortcuts
+        // =====================
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                if (document.getElementById('createModal').classList.contains('active')) {
+                    closeModal();
+                } else if (document.getElementById('chatPanel').classList.contains('open')) {
+                    closeChatPanel();
+                }
+            }
+        });
+
+        // =====================
+        // Auto-Sync (Polling)
+        // =====================
+        let pollDashboard = null;
+        let pollBoard = null;
+        let pollChat = null;
+
+        function startDashboardPolling() {
+            stopAllPolling();
+            pollDashboard = setInterval(loadProjects, 15000);
+        }
+
+        function startBoardPolling() {
+            stopAllPolling();
+            pollBoard = setInterval(() => {
+                loadTickets();
+            }, 5000);
+        }
+
+        function startChatPolling(ticketId) {
+            if (pollChat) clearInterval(pollChat);
+            pollChat = setInterval(() => {
+                if (selectedTicket && selectedTicket.id === ticketId) {
+                    loadChatMessages(ticketId);
+                }
+            }, 3000);
+        }
+
+        function stopChatPolling() {
+            if (pollChat) { clearInterval(pollChat); pollChat = null; }
+        }
+
+        function stopAllPolling() {
+            if (pollDashboard) { clearInterval(pollDashboard); pollDashboard = null; }
+            if (pollBoard) { clearInterval(pollBoard); pollBoard = null; }
+            stopChatPolling();
+        }
+
+        // Patch showDashboardView/showBoardView to start polling
+        const _origShowDashboard = showDashboardView;
+        showDashboardView = function() {
+            _origShowDashboard();
+            startDashboardPolling();
+        };
+
+        const _origShowBoard = showBoardView;
+        showBoardView = function() {
+            _origShowBoard();
+            startBoardPolling();
+        };
+
+        // Patch openChatPanel to start chat polling
+        const _origOpenChat = openChatPanel;
+        openChatPanel = function(ticket) {
+            _origOpenChat(ticket);
+            startChatPolling(ticket.id);
+        };
+
+        // Patch closeChatPanel to stop chat polling
+        const _origCloseChat = closeChatPanel;
+        closeChatPanel = function() {
+            stopChatPolling();
+            _origCloseChat();
+        };
 
         // =====================
         // Init
