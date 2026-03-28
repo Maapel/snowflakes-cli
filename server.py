@@ -61,7 +61,14 @@ class CommentCreate(BaseModel):
 
 @app.get("/api/tickets")
 async def get_tickets():
-    return list_tickets_logic(all=True)
+    tickets = list_tickets_logic(all=True)
+    result = []
+    for t in tickets:
+        d = t.model_dump(mode='json')
+        comments = list_comments_logic(t.id)
+        d['comment_count'] = len(comments)
+        result.append(d)
+    return result
 
 @app.post("/api/tickets")
 async def create_ticket(ticket: TicketCreate):
@@ -165,7 +172,14 @@ async def list_projects():
 @app.get("/api/projects/{project_id}/tickets")
 async def get_project_tickets(project_id: int):
     with project_context(project_id):
-        return list_tickets_logic(all=True)
+        tickets = list_tickets_logic(all=True)
+        result = []
+        for t in tickets:
+            d = t.model_dump(mode='json')
+            comments = list_comments_logic(t.id)
+            d['comment_count'] = len(comments)
+            result.append(d)
+        return result
 
 @app.post("/api/projects/{project_id}/tickets")
 async def create_project_ticket(project_id: int, ticket: TicketCreate):
