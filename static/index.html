@@ -1787,12 +1787,12 @@
         const assigneeDropdown = document.getElementById('assigneeDropdown');
 
         assigneeInput.addEventListener('focus', () => {
-            updateAssigneeDropdown();
+            updateAssigneeDropdown(true);
             assigneeDropdown.classList.add('show');
         });
 
         assigneeInput.addEventListener('input', () => {
-            updateAssigneeDropdown();
+            updateAssigneeDropdown(false);
             assigneeDropdown.classList.add('show');
         });
 
@@ -1943,20 +1943,20 @@
         const panelAssigneeDropdown = document.getElementById('panelAssigneeDropdown');
 
         panelAssigneeInput.addEventListener('focus', () => {
-            updatePanelAssigneeDropdown();
+            updatePanelAssigneeDropdown(true);
             panelAssigneeDropdown.classList.add('show');
         });
 
         panelAssigneeInput.addEventListener('input', () => {
-            updatePanelAssigneeDropdown();
+            updatePanelAssigneeDropdown(false);
             panelAssigneeDropdown.classList.add('show');
         });
 
-        function updatePanelAssigneeDropdown() {
+        function updatePanelAssigneeDropdown(showAll) {
             const query = panelAssigneeInput.value.toLowerCase();
             const users = getAllAssignees();
             panelAssigneeDropdown.innerHTML = '';
-            const matches = users.filter(u => u.toLowerCase().includes(query));
+            const matches = showAll ? users : users.filter(u => u.toLowerCase().includes(query));
             matches.forEach(u => {
                 const div = document.createElement('div');
                 div.className = 'dropdown-item';
@@ -1974,11 +1974,11 @@
         }
 
         // Also update the create modal assignee dropdown to use getAllAssignees
-        function updateAssigneeDropdown() {
+        function updateAssigneeDropdown(showAll) {
             const query = assigneeInput.value.toLowerCase();
             const users = getAllAssignees();
             assigneeDropdown.innerHTML = '';
-            const matches = users.filter(u => u.toLowerCase().includes(query));
+            const matches = showAll ? users : users.filter(u => u.toLowerCase().includes(query));
             matches.forEach(u => {
                 const div = document.createElement('div');
                 div.className = 'dropdown-item';
