@@ -435,13 +435,48 @@
             width: 24px;
             height: 24px;
             border-radius: 50%;
-            background: linear-gradient(135deg, #6366f1, #a855f7);
             display: flex;
             align-items: center;
             justify-content: center;
             font-size: 0.6rem;
             font-weight: bold;
             text-transform: uppercase;
+        }
+
+        /* Agent-specific styles */
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 4px;
+        }
+        .status-WORKING { background: #facc15; animation: pulse 1.5s infinite; }
+        .status-IDLE { background: #6b7280; }
+        .status-BLOCKED { background: #ef4444; }
+        .status-DONE { background: #4ade80; }
+
+        /* Agent activity bar */
+        .agent-activity-bar {
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
+            padding: 0.5rem 1rem;
+            margin-bottom: 0.5rem;
+            background: var(--glass-bg);
+            border: var(--glass-border);
+            border-radius: 0.75rem;
+            font-size: 0.8rem;
+            flex-wrap: wrap;
+        }
+        .agent-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.3rem;
+            padding: 0.25rem 0.6rem;
+            border-radius: 1rem;
+            font-weight: 600;
+            font-size: 0.75rem;
         }
 
         /* ======================== */
@@ -648,6 +683,17 @@
         .chat-input-bar input:focus {
             outline: none;
             border-color: var(--primary);
+        }
+
+        .chat-author-select {
+            padding: 0.65rem 0.5rem;
+            background: rgba(0, 0, 0, 0.25);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 0.75rem;
+            color: white;
+            font-size: 0.8rem;
+            cursor: pointer;
+            min-width: 70px;
         }
 
         .chat-input-bar button {
@@ -1113,6 +1159,9 @@
             <div class="chat-empty">No conversation yet.</div>
         </div>
         <div class="chat-input-bar">
+            <select id="chatAuthor" class="chat-author-select" title="Send as">
+                <option value="me">me</option>
+            </select>
             <input type="text" id="chatInput" placeholder="Type a message..." autocomplete="off">
             <button onclick="sendChatMessage()">Send</button>
         </div>
@@ -1282,7 +1331,26 @@
                 const donePercent = total > 0 ? Math.round((s.done / total) * 100) : 0;
 
                 let agentHtml = '';
-                if (s.agent_tickets.length > 0) {
+                const agentStats = s.agents || {};
+                const agentNames = Object.keys(agentStats).sort();
+
+                if (agentNames.length > 0) {
+                    // Show per-agent stat badges
+                    let badges = agentNames.map(name => {
+                        const a = agentStats[name];
+                        const c = hashColor(name);
+                        return `<span class="stat-badge" style="background:rgba(${c},0.15);color:rgb(${c})">${escapeHtml(name)}: ${a.active}</span>`;
+                    }).join(' ');
+                    agentHtml += `<div style="display:flex;gap:0.35rem;flex-wrap:wrap;margin-bottom:0.5rem;">${badges}</div>`;
+                    // Show per-agent tickets
+                    agentNames.forEach(name => {
+                        const a = agentStats[name];
+                        const tickets = a.tickets.map(t =>
+                            `<div class="agent-ticket-item"><span class="ticket-id">#${t.id}</span> ${escapeHtml(t.title)}</div>`
+                        ).join('');
+                        agentHtml += '<div class="agent-section"><div class="agent-section-header">\xD83E\xDD16 ' + escapeHtml(name) + ' (' + a.active + ' active)</div>' + (tickets || '<div class="no-agent">(none)</div>') + '</div>';
+                    });
+                } else if (s.agent_tickets.length > 0) {
                     agentHtml = s.agent_tickets.map(t =>
                         `<div class="agent-ticket-item"><span class="ticket-id">#${t.id}</span> ${escapeHtml(t.title)}</div>`
                     ).join('');
@@ -1481,7 +1549,7 @@
                 ${t.description ? '<div style="font-size:0.8rem;opacity:0.6;margin-bottom:0.5rem;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;">' + escapeHtml(t.description) + '</div>' : ''}
                 <div class="ticket-meta">
                     <span class="badge">${t.points} pts${t.comment_count ? '<span class="comment-badge has-comments"> &#128172; ' + t.comment_count + '</span>' : ''}</span>
-                    <div class="avatar" title="${escapeHtml(t.assignee)}">${escapeHtml((t.assignee || '').substring(0, 2))}</div>
+                    <div class="avatar" style="background:linear-gradient(135deg, rgb(${hashColor(t.assignee || '')}), #a855f7)" title="${escapeHtml(t.assignee)}">${escapeHtml((t.assignee || '').substring(0, 2))}</div>
                 </div>
             `;
             return div;
@@ -1581,11 +1649,38 @@
             document.getElementById('panelAssignee').value = ticket.assignee || 'me';
             document.getElementById('panelPoints').value = ticket.points || 0;
 
+            populateChatAuthors();
+
             panel.classList.add('open');
             document.getElementById('boardWrapper').classList.add('panel-open');
             renderBoard(); // re-render to highlight selected
 
             loadChatMessages(ticket.id);
+        }
+
+        async function populateChatAuthors() {
+            const select = document.getElementById('chatAuthor');
+            const currentVal = select.value;
+            select.innerHTML = '<option value="me">me</option>';
+            const agents = new Set();
+            allTickets.forEach(t => { if (t.assignee && t.assignee !== 'me' && t.assignee !== 'ai') agents.add(t.assignee); });
+            try {
+                const res = await fetch('/api/agents');
+                if (res.ok) {
+                    const agentList = await res.json();
+                    agentList.forEach(a => agents.add(a.name));
+                }
+            } catch(e) {}
+            agents.add('ai');
+            Array.from(agents).sort().forEach(name => {
+                const opt = document.createElement('option');
+                opt.value = name;
+                opt.textContent = name;
+                select.appendChild(opt);
+            });
+            if (currentVal && select.querySelector(`option[value="${currentVal}"]`)) {
+                select.value = currentVal;
+            }
         }
 
         function closeChatPanel() {
@@ -1656,13 +1751,18 @@
                 } else {
                     comments.forEach(c => {
                         const bubble = document.createElement('div');
-                        const isAi = c.author === 'ai';
                         const isResolution = c.content.startsWith('Resolved: ');
                         if (isResolution) {
                             bubble.className = 'chat-bubble';
                             bubble.style.cssText = 'align-self:center;background:rgba(74,222,128,0.1);border:1px solid rgba(74,222,128,0.2);max-width:95%;text-align:center;';
                         } else {
-                            bubble.className = `chat-bubble ${isAi ? 'ai' : 'me'}`;
+                            const author = c.author || 'me';
+                            const isMe = (author === 'me' || author === 'user');
+                            bubble.className = `chat-bubble ${isMe ? 'me' : 'agent'}`;
+                            if (!isMe && author !== 'ai') {
+                                const col = hashColor(author);
+                                bubble.style.cssText = `align-self:flex-start;background:rgba(${col},0.15);border:1px solid rgba(${col},0.25);border-bottom-left-radius:0.25rem;`;
+                            }
                         }
                         const dateStr = new Date(c.created_at).toLocaleString();
                         bubble.innerHTML = `
@@ -1683,14 +1783,16 @@
         async function sendChatMessage() {
             if (!selectedTicket) return;
             const input = document.getElementById('chatInput');
+            const authorSelect = document.getElementById('chatAuthor');
             const content = input.value.trim();
+            const author = authorSelect?.value || 'me';
             if (!content) return;
 
             try {
                 const res = await fetch(`${getApiBase()}/${selectedTicket.id}/comments`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ content: content, author: 'me' })
+                    body: JSON.stringify({ content: content, author: author })
                 });
                 if (res.ok) {
                     input.value = '';
@@ -2072,6 +2174,18 @@
             stopChatPolling();
             _origCloseChat();
         };
+
+        // Helper: deterministic color from string (for agent avatars/bubbles)
+        function hashColor(str) {
+            let hash = 0;
+            for (let i = 0; i < str.length; i++) {
+                hash = str.charCodeAt(i) + ((hash << 5) - hash);
+            }
+            const r = (hash >> 16) & 255;
+            const g = (hash >> 8) & 255;
+            const b = hash & 255;
+            return `${r},${g},${b}`;
+        }
 
         // =====================
         // Init

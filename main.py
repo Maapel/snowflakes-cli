@@ -10,7 +10,7 @@ from rich.panel import Panel
 from rich.prompt import Prompt, IntPrompt
 
 # Import our local modules
-from models import Ticket, Comment, Project
+from models import Ticket, Comment, Project, Agent
 from database import init_db, get_session, init_registry_db, get_registry_session
 import sys
 import os
@@ -62,13 +62,15 @@ def create_comment_logic(ticket_id: int, content: str, author: str = "me"):
         ticket = session.get(Ticket, ticket_id)
         if not ticket:
             raise ValueError(f"Ticket #{ticket_id} not found")
-        
+
         comment = Comment(
             ticket_id=ticket_id,
             content=content,
             author=author
         )
+        ticket.last_activity = datetime.now()
         session.add(comment)
+        session.add(ticket)
         session.commit()
         session.refresh(comment)
         return comment
@@ -138,42 +140,35 @@ def callback(
     Snowflakes: A local-first Project Management System.
     """
     if agent_help:
-        rprint("""[bold cyan]❄️ Snowflakes AI Protocol[/bold cyan]
+        rprint("""[bold cyan]❄️ Snowflakes Multi-Agent Protocol[/bold cyan]
 
-[bold]1. Overview[/bold]
-Snowflakes is a local-first PM system. Data is in `snowflakes.db`.
-Use `sw --project <path>` if the DB is not in the current directory.
+[bold]1. Registration[/bold]
+Each agent registers: `sw agent-reg <name> --role "<role>"`
+Example: `sw agent-reg virus --role "Project Manager"`
 
-[bold]2. Core Loop[/bold]
-1. [green]SCAN[/green]: `sw agent-read` -> Get assigned OPEN tickets + conversation history.
-2. [green]SEARCH[/green]: `sw search "<query>"` -> Check if a ticket already exists.
-3. [yellow]CREATE[/yellow]: `sw quick "<title>"` -> Create + assign to AI + IN_PROGRESS in one step.
-4. [yellow]SIGNAL[/yellow]: `sw move <ID> IN_PROGRESS` -> Signal you are working.
-5. [magenta]COMMUNICATE[/magenta]: `sw comment <ID> "<text>" --author ai` -> Updates/blockers.
-6. [blue]RESOLVE[/blue]: `sw resolve <ID> --notes "Fixed via ..."` -> Close ticket.
+[bold]2. Core Loop (per named agent)[/bold]
+1. [green]POLL[/green]: `sw agent-poll <name>` → Your tickets + unreplied messages + auto-heartbeat
+2. [green]SEARCH[/green]: `sw search "<query>"` → Check existing tickets
+3. [yellow]QUICK[/yellow]: `sw quick "<title>" --agent <name>` → Create + assign + IN_PROGRESS
+4. [yellow]TAKE[/yellow]: `sw take <ID> --agent <name>` → Claim existing ticket
+5. [magenta]COMMUNICATE[/magenta]: `sw comment <ID> "<text>" --author <name>` → Progress
+6. [blue]RESOLVE[/blue]: `sw resolve <ID> --notes "..."` → Close with notes
 
-[bold]3. Agent-Optimized Commands[/bold]
-- `sw quick "<title>"`: Create ticket assigned to AI, auto IN_PROGRESS. Returns JSON.
-- `sw take <ID>`: Assign ticket to AI + move to IN_PROGRESS. Returns JSON.
-- `sw search "<query>"`: Search tickets by title/description. Returns JSON.
-- `sw status`: Summary of all open tickets grouped by status. Returns JSON.
-- `sw batch-new --json '[...]'`: Create multiple tickets from JSON array.
-- `sw agent-read`: JSON dump of AI-assigned tickets including all comments.
-- `sw comment <ID> <TEXT> --author ai`: Add to the ticket conversation.
-- `sw resolve <ID> --notes "<text>"`: Close ticket with notes.
+[bold]3. Heartbeat (headless agents)[/bold]
+`sw agent-poll <name> --status WORKING` → Poll + heartbeat + get tickets
+`sw agent-heartbeat <name> --status BLOCKED` → Report blocked
 
-[bold]4. Standard Commands[/bold]
-- `sw view <ID>`: Full ticket details and conversation (human-readable).
-- `sw move <ID> <STATUS>`: Update status (TODO, IN_PROGRESS, REVIEW, DONE).
-- `sw list --json`: All open tickets as JSON.
-- `sw new "<title>" --assign ai --no-interactive`: Create without prompts.
-- `sw groom-read`: Unestimated backlog tickets.
+[bold]4. Board[/bold]
+`sw agent-list --json` → All registered agents + status
+`sw status --json` → Open tickets by status
+`sw agent-read --agent <name>` → Your tickets with full comment history
 
-[bold]5. System Prompt Hint[/bold]
-"You are a software engineer agent. Before starting any work, check
-`sw search` for existing tickets and `sw agent-read` for assigned tasks.
-Create tickets with `sw quick` for all work. Always use `sw comment
---author ai` and `sw resolve` to track progress."
+[bold]5. Rules[/bold]
+- ALWAYS use your exact agent name as --agent and --author
+- Always `sw search` before creating to avoid duplicates
+- Always `sw quick` or `sw take` when starting work
+- Always `sw comment --author <name>` for progress/blockers
+- Always `sw resolve` when done
 """)
         raise typer.Exit()
 
@@ -240,13 +235,14 @@ def new(
 def create_ticket_logic(title, desc, type, assign, prio, points, sprint):
     with get_session() as session:
         ticket = Ticket(
-            title=title, 
-            description=desc, 
+            title=title,
+            description=desc,
             type=type.upper(),
-            assignee=assign.lower(), 
+            assignee=assign.lower(),
             priority=prio.upper(),
             points=points,
-            sprint=sprint
+            sprint=sprint,
+            last_activity=datetime.now()
         )
         session.add(ticket)
         session.commit()
@@ -508,26 +504,34 @@ def quick(
     prio: str = typer.Option("MEDIUM", help="Priority: LOW, MEDIUM, HIGH"),
     points: int = typer.Option(0, help="Story points"),
     sprint: str = typer.Option("Backlog", help="Sprint name"),
+    agent: Optional[str] = typer.Option("ai", "--agent", "-a", help="Agent name (e.g., bahubali, virus, kundan)"),
 ):
-    """Create a ticket assigned to AI and immediately move to IN_PROGRESS. Designed for agents."""
-    ticket = create_ticket_logic(title, desc, type, "ai", prio, points, sprint)
+    """Create a ticket assigned to an agent and immediately move to IN_PROGRESS. Designed for agents."""
+    ticket = create_ticket_logic(title, desc, type, agent or "ai", prio, points, sprint)
     move_ticket_logic(ticket.id, "IN_PROGRESS")
-    result = {"id": ticket.id, "title": ticket.title, "status": "IN_PROGRESS", "assignee": "ai"}
+    # Update agent working status
+    update_agent_status(agent or "ai", "WORKING", ticket.id)
+    result = {"id": ticket.id, "title": ticket.title, "status": "IN_PROGRESS", "assignee": agent or "ai"}
     print(json.dumps(result))
 
 @app.command("take")
-def take(ticket_id: int):
-    """Assign a ticket to AI and move to IN_PROGRESS."""
+def take(
+    ticket_id: int,
+    agent: Optional[str] = typer.Option("ai", "--agent", "-a", help="Agent name"),
+):
+    """Assign a ticket to an agent and move to IN_PROGRESS."""
     with get_session() as session:
         ticket = session.get(Ticket, ticket_id)
         if not ticket:
             rprint(f"[red]Ticket #{ticket_id} not found.[/red]")
             raise typer.Exit(code=1)
-        ticket.assignee = "ai"
+        ticket.assignee = agent.lower()
         ticket.status = "IN_PROGRESS"
+        ticket.last_activity = datetime.now()
         session.add(ticket)
         session.commit()
-    result = {"id": ticket_id, "status": "IN_PROGRESS", "assignee": "ai"}
+    update_agent_status(agent or "ai", "WORKING", ticket_id)
+    result = {"id": ticket_id, "status": "IN_PROGRESS", "assignee": agent.lower()}
     print(json.dumps(result))
 
 @app.command("search")
@@ -614,27 +618,33 @@ def groom_read():
     print(json.dumps(data, indent=2))
 
 @app.command("agent-read")
-def agent_read():
-    """Output OPEN tickets assigned to AI as JSON. Includes conversation history and unreplied user messages."""
+def agent_read(
+    agent: Optional[str] = typer.Option(None, "--agent", "-a", help="Filter by agent name"),
+):
+    """Output OPEN tickets assigned to AI or a specific agent as JSON."""
     with get_session() as session:
-        statement = select(Ticket).where(Ticket.assignee == "ai").where(Ticket.status != "DONE")
+        if agent:
+            statement = select(Ticket).where(Ticket.assignee == agent.lower()).where(Ticket.status != "DONE")
+        else:
+            statement = select(Ticket).where(Ticket.assignee == "ai").where(Ticket.status != "DONE")
         tickets = session.exec(statement).all()
 
     data = []
+    check_author = agent.lower() if agent else "ai"
     for t in tickets:
         ticket_data = t.model_dump(mode='json')
         comments = list_comments_logic(t.id)
         comment_list = [c.model_dump(mode='json') for c in comments]
         ticket_data["comments"] = comment_list
 
-        # Find unreplied user messages (messages after the last AI comment)
+        # Find unreplied messages (messages after the agent's last comment)
         unreplied = []
-        last_ai_idx = -1
+        last_agent_idx = -1
         for i, c in enumerate(comment_list):
-            if c["author"] == "ai":
-                last_ai_idx = i
-        for c in comment_list[last_ai_idx + 1:]:
-            if c["author"] != "ai":
+            if c["author"] == check_author:
+                last_agent_idx = i
+        for c in comment_list[last_agent_idx + 1:]:
+            if c["author"] != check_author:
                 unreplied.append(c)
 
         ticket_data["has_unreplied"] = len(unreplied) > 0
@@ -741,14 +751,193 @@ def stop_server():
     if not pid:
         rprint("[red]❄️  No active Snowflakes server found.[/red]")
         return
-        
+
     try:
         os.kill(pid, signal.SIGTERM)
         rprint(f"[green]✓ Stopped Snowflakes server (PID: {pid})[/green]")
     except OSError:
         rprint(f"[yellow]Process {pid} not found. Cleaning up lock file.[/yellow]")
-        
+
     remove_pid()
+
+
+# ============================================================
+# Multi-Agent Commands
+# ============================================================
+
+def update_agent_status(agent_name: str, status: str, ticket_id: Optional[int] = None):
+    """Register or update an agent's status in the DB."""
+    with get_session() as session:
+        q = select(Agent).where(Agent.name == agent_name.lower())
+        agent = session.exec(q).first()
+        if agent:
+            agent.status = status
+            agent.last_heartbeat = datetime.now()
+            if ticket_id is not None:
+                agent.current_ticket = ticket_id
+            session.add(agent)
+        else:
+            agent = Agent(
+                name=agent_name.lower(),
+                role="agent",
+                status=status,
+                current_ticket=ticket_id,
+            )
+            session.add(agent)
+        session.commit()
+
+@app.command("agent-reg")
+def agent_register(
+    name: str = typer.Argument(..., help="Agent name (e.g., bahubali, virus)"),
+    role: str = typer.Option("agent", "--role", "-r", help="Agent role/title"),
+    capabilities: Optional[str] = typer.Option(None, "--caps", "-c", help="JSON array of capabilities"),
+    metadata: Optional[str] = typer.Option(None, "--meta", "-m", help="JSON metadata"),
+):
+    """Register an agent in the project."""
+    with get_session() as session:
+        q = select(Agent).where(Agent.name == name.lower())
+        existing = session.exec(q).first()
+        if existing:
+            existing.role = role
+            existing.status = "IDLE"
+            existing.last_heartbeat = datetime.now()
+            if capabilities: existing.capabilities = capabilities
+            if metadata: existing.metadata = metadata
+            session.add(existing)
+        else:
+            session.add(Agent(
+                name=name.lower(),
+                role=role,
+                capabilities=capabilities,
+                metadata=metadata,
+            ))
+        session.commit()
+    rprint(f"[green]✓ Agent '{name}' registered (role: {role})[/green]")
+
+@app.command("agent-list")
+def agent_list(json_output: bool = typer.Option(False, "--json")):
+    """List all registered agents and their status."""
+    with get_session() as session:
+        agents = session.exec(select(Agent).order_by(Agent.name)).all()
+
+    if json_output:
+        data = []
+        for a in agents:
+            d = a.model_dump(mode='json')
+            data.append(d)
+        print(json.dumps(data, indent=2))
+        return
+
+    if not agents:
+        rprint("[yellow]No agents registered. Use `sw agent-reg <name>` to register.[/yellow]")
+        return
+
+    table = Table(title="Registered Agents")
+    table.add_column("Name", style="cyan")
+    table.add_column("Role")
+    table.add_column("Status", style="bold")
+    table.add_column("Ticket")
+    table.add_column("Last Active")
+    for a in agents:
+        status_color = {"WORKING": "yellow", "IDLE": "green", "BLOCKED": "red", "DONE": "blue"}.get(a.status, "white")
+        table.add_row(
+            a.name,
+            a.role or "agent",
+            f"[{status_color}]{a.status}[/{status_color}]",
+            f"#{a.current_ticket}" if a.current_ticket else "-",
+            a.last_heartbeat.strftime("%H:%M:%S") if a.last_heartbeat else "-",
+        )
+    console.print(table)
+
+@app.command("agent-heartbeat")
+def agent_heartbeat(
+    name: str = typer.Argument(..., help="Agent name"),
+    status: str = typer.Option("WORKING", "--status", "-s", help="IDLE, WORKING, BLOCKED, DONE"),
+):
+    """Update agent heartbeat status. Agents call this periodically."""
+    update_agent_status(name, status.upper())
+    rprint(f"[green]✓ {name} heartbeat: {status.upper()}[/green]")
+
+@app.command("agent-poll")
+def agent_poll(
+    name: str = typer.Argument(..., help="Agent name"),
+    status: str = typer.Option("WORKING", "--status", "-s", help="New status for polling"),
+):
+    """Check for new work assigned to this agent. Returns JSON. Headless-friendly."""
+    agent_name = name.lower()
+    with get_session() as session:
+        # Update agent heartbeat
+        q = select(Agent).where(Agent.name == agent_name)
+        agent = session.exec(q).first()
+        if agent:
+            agent.last_heartbeat = datetime.now()
+            if status:
+                agent.status = status.upper()
+            session.add(agent)
+            session.commit()
+
+        # Find tickets assigned to this agent
+        tickets = session.exec(
+            select(Ticket).where(Ticket.assignee == agent_name).where(Ticket.status != "DONE")
+        ).all()
+
+    data = []
+    for t in tickets:
+        ticket_data = t.model_dump(mode='json')
+        comments = list_comments_logic(t.id)
+        comment_list = [c.model_dump(mode='json') for c in comments]
+        ticket_data["comments"] = comment_list
+
+        # Find unreplied messages (messages after the agent's last comment)
+        unreplied = []
+        last_agent_idx = -1
+        for i, c in enumerate(comment_list):
+            if c["author"] == agent_name:
+                last_agent_idx = i
+        for c in comment_list[last_agent_idx + 1:]:
+            if c["author"] != agent_name:
+                unreplied.append(c)
+
+        ticket_data["has_unreplied"] = len(unreplied) > 0
+        ticket_data["unreplied_messages"] = unreplied
+        data.append(ticket_data)
+
+    print(json.dumps({
+        "agent": agent_name,
+        "status": agent.status.upper() if agent else "UNKNOWN",
+        "tickets": data,
+        "active_tickets": len(data),
+    }, indent=2))
+
+@app.command("agent-help")
+def agent_help():
+    """Print agent-specific protocol for named agents (multi-agent army)."""
+    rprint("""[bold cyan]❄️ Snowflakes Multi-Agent Protocol[/bold cyan]
+
+[bold]1. Registration[/bold]
+Each agent registers itself: `sw agent-reg <name> --role "<role>"`
+Example: `sw agent-reg virus --role "Project Manager"`
+
+[bold]2. Agent System Prompt[/bold]
+"You have access to Snowflakes (`sw`). Every piece of work you do
+must be tracked as a ticket. Use your agent name for all actions."
+
+[bold]3. Core Loop (per agent)[/bold]
+1. [green]POLL[/green]: `sw agent-poll <name>` → Check your assigned tickets + unreplied messages
+2. [green]SEARCH[/green]: `sw search "<query>"` → Check if a ticket exists before creating
+3. [yellow]QUICK[/yellow]: `sw quick "<title>" --agent <name>` → Create + assign + IN_PROGRESS
+4. [yellow]TAKE[/yellow]: `sw take <ID> --agent <name>` → Pick up existing ticket
+5. [magenta]COMMENT[/magenta]: `sw comment <ID> "<text>" --author <name>` → Report progress
+6. [blue]RESOLVE[/blue]: `sw resolve <ID> --notes "..."` → Mark complete
+
+[bold]4. Heartbeat (headless)[/bold]
+`sw agent-heartbeat <name> --status WORKING` → Keep your status alive
+`sw agent-heartbeat <name> --status BLOCKED` → Report blocked
+
+[bold]5. Key Rule[/bold]
+ALWAYS use your exact agent name as --agent and --author.
+This enables the UI to show who's working on what, and who said what.""")
+
 
 if __name__ == "__main__":
     app()
